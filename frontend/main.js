@@ -4,7 +4,7 @@ const SESSION_KEY = "datacomDailySchedule.session";
 const USER_STORAGE_KEY = "datacomDailySchedule.users";
 const MOCK_DB_KEY = "datacomDailySchedule.mockDatabase";
 const DELETED_USERNAMES_KEY = "datacomDailySchedule.deletedUsernames";
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "https://desktop-19n0dfj.taildafd1a.ts.net:8443/backend2/api";
 
 const elements = {
   formEyebrow: document.getElementById("formEyebrow"),
