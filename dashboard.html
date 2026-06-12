@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Datacom Daily Schedule System</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="topbar">
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <a class="topbar-brand" href="dashboard.html" aria-label="Datacom dashboard">
+      <img src="assets/logo.png" alt="">
+      <span>
+        <strong>Datacom Enterprise Pte Ltd</strong>
+        <small>Daily Schedule System</small>
+      </span>
+    </a>
+    <div class="topbar-actions">
+      <div class="notification-center">
+        <button class="notification" id="notificationButton" type="button" aria-label="View notifications" aria-haspopup="true" aria-expanded="false">
+          <span aria-hidden="true">&#128276;</span>
+          <b class="hidden" id="notificationCount">0</b>
+        </button>
+        <section class="notification-panel hidden" id="notificationPanel" aria-label="Notification Center">
+          <header class="notification-header">
+            <div>
+              <p class="eyebrow">Updates</p>
+              <h2>Notification Center</h2>
+            </div>
+            <div class="notification-actions">
+              <button class="clear-notifications" id="markAllNotificationsRead" type="button">Mark All as Read</button>
+              <button class="clear-notifications" id="clearNotifications" type="button">Clear All</button>
+            </div>
+          </header>
+          <div class="notification-list" id="notificationList"></div>
+          <p class="empty-notifications hidden" id="emptyNotifications">No notifications to display.</p>
+        </section>
+      </div>
+      <div class="account-menu">
+        <button class="user-profile" id="accountMenuButton" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="avatar" aria-hidden="true">AD</span>
+          <span class="user-details">
+            <strong id="profileName">System Admin</strong>
+            <small id="profileRole">Admin</small>
+          </span>
+          <span class="account-chevron" aria-hidden="true">&#9662;</span>
+        </button>
+        <nav class="account-dropdown hidden" id="accountDropdown" aria-label="Account options">
+          <button class="account-action" id="myProfileAction" type="button">My Profile</button>
+          <button class="account-action" id="changePasswordAction" type="button">Change Password</button>
+          <a class="account-action account-logout" id="accountLogoutLink" href="index.html">Logout</a>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <p class="menu-label">Main Menu</p>
+      <nav class="sidebar-nav" id="sidebarNav" aria-label="Primary navigation"></nav>
+      <a class="logout" id="logoutLink" href="index.html">
+        <span aria-hidden="true">&#10140;</span>
+        Logout
+      </a>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <main class="dashboard-content">
+      <section class="page-heading" id="schedulePageHeading">
+        <div>
+          <p class="eyebrow">Dashboard</p>
+          <h1 id="dashboardTitle">Daily Operations Overview</h1>
+          <p class="subtitle" id="dashboardSubtitle">Monitor scheduled work and manage activity at a glance.</p>
+        </div>
+        <div class="date-selector">
+          <span class="selector-label">Schedule Date</span>
+          <strong id="selectedDateLabel"></strong>
+          <span class="last-updated" id="dashboardLastUpdated">Last updated: --:--:--</span>
+          <div class="date-controls">
+            <button class="date-nav" id="previousDay" type="button" aria-label="View previous day">&larr;</button>
+            <input id="scheduleDate" type="date" aria-label="Select schedule date">
+            <button class="date-nav" id="nextDay" type="button" aria-label="View next day">&rarr;</button>
+            <button class="date-nav date-tba" id="selectTbaDate" type="button" aria-label="View TBA schedules">TBA</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-overview" id="dashboardSection">
+        <section class="metrics" aria-label="Schedule totals">
+          <article class="metric-card total selected" data-filter="all" tabindex="0" role="button" aria-pressed="true">
+            <div>
+              <p>Total Schedules Today</p>
+              <strong id="totalScheduleCount">0</strong>
+              <small>Scheduled for date</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#128197;</span>
+          </article>
+          <article class="metric-card deliveries" data-filter="Delivery" tabindex="0" role="button" aria-pressed="false">
+            <div>
+              <p>Deliveries</p>
+              <strong id="deliveryCount">0</strong>
+              <small>Scheduled for date</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#128666;</span>
+          </article>
+          <article class="metric-card self-collection" data-filter="Customer Self-Collection" tabindex="0" role="button" aria-pressed="false">
+            <div>
+              <p>Customer Self-Collection</p>
+              <strong id="selfCollectionCount">0</strong>
+              <small>Collects from our site</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#128230;</span>
+          </article>
+          <article class="metric-card vendor-collection" data-filter="Collection at Vendor Place" tabindex="0" role="button" aria-pressed="false">
+            <div>
+              <p>Collection at Vendor Place</p>
+              <strong id="vendorCollectionCount">0</strong>
+              <small>Collects from supplier</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#128666;</span>
+          </article>
+          <article class="metric-card technical" data-filter="Technical / Onsite Jobs" tabindex="0" role="button" aria-pressed="false">
+            <div>
+              <p>Technical / Onsite Jobs</p>
+              <strong id="technicalCount">0</strong>
+              <small>Assigned for date</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#9881;</span>
+          </article>
+          <article class="metric-card submitted" data-filter="Submitted" tabindex="0" role="button" aria-pressed="false" title="Sales submitted schedule requests awaiting Warehouse review.">
+            <div>
+              <p>Submitted</p>
+              <strong id="submittedCount">0</strong>
+              <small>Awaiting review</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#9202;</span>
+          </article>
+          <article class="metric-card pending" data-filter="Pending" tabindex="0" role="button" aria-pressed="false" title="Waiting for arrangement, customer confirmation, vendor update, or TBA schedule details.">
+            <div>
+              <p>Pending</p>
+              <strong id="pendingCount">0</strong>
+              <small>Awaiting arrangement</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#9202;</span>
+          </article>
+          <article class="metric-card ready" data-filter="Ready to Ship" tabindex="0" role="button" aria-pressed="false" title="Warehouse has arranged the next action and goods are ready for dispatch.">
+            <div>
+              <p>Ready to Ship</p>
+              <strong id="readyToShipCount">0</strong>
+              <small>Prepared for dispatch</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#10003;</span>
+          </article>
+          <article class="metric-card progress" data-filter="In Progress" tabindex="0" role="button" aria-pressed="false" title="Work is currently being handled.">
+            <div>
+              <p>In Progress</p>
+              <strong id="inProgressCount">0</strong>
+              <small>Currently active</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#8635;</span>
+          </article>
+          <article class="metric-card completed" data-filter="Completed" tabindex="0" role="button" aria-pressed="false" title="Job has been completed.">
+            <div>
+              <p>Completed</p>
+              <strong id="completedCount">0</strong>
+              <small>Finished jobs</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#10003;</span>
+          </article>
+          <article class="metric-card forwarded" data-filter="Carried Forward" tabindex="0" role="button" aria-pressed="false" title="Job has been moved forward to another date.">
+            <div>
+              <p>Carried Forward</p>
+              <strong id="carriedForwardCount">0</strong>
+              <small>Continues next day</small>
+            </div>
+            <span class="metric-icon" aria-hidden="true">&#8594;</span>
+          </article>
+        </section>
+
+        <section class="schedule-panel recent-updates-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Recent Updates</p>
+              <h2>Latest Important Changes</h2>
+            </div>
+            <div class="filter-controls">
+              <button class="secondary-button" id="viewAllUpdates" type="button">View All Updates</button>
+              <button class="secondary-button" id="markAllUpdatesRead" type="button">Mark All as Read</button>
+            </div>
+          </div>
+          <div class="recent-updates-list" id="recentUpdatesList"></div>
+          <div class="empty-schedule hidden" id="emptyRecentUpdates">
+            <h3>No recent updates</h3>
+            <p>Important changes will appear here when they are available.</p>
+          </div>
+        </section>
+
+        <section class="schedule-panel preview-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Schedule Preview</p>
+              <h2>Today's Upcoming Schedule</h2>
+            </div>
+            <div class="filter-controls">
+              <span class="current-filter">Current Filter: <strong id="currentFilterLabel">All Schedules</strong></span>
+              <button class="secondary-button" id="clearPreviewFilter" type="button">Clear Filter</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Type</th>
+                  <th>Reference Number (PS/PR/PO)</th>
+                  <th>Company Name</th>
+                  <th>Assigned Person</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="previewRows"></tbody>
+            </table>
+            <div class="empty-schedule hidden" id="emptyPreview">
+              <h3>No upcoming schedules</h3>
+              <p>No activities are recorded for the selected date.</p>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="schedule-entry hidden" id="addSchedule">
+        <section class="schedule-panel add-schedule-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Schedule Entry</p>
+              <h2>Add Schedule</h2>
+              <p class="panel-description">Create a new operational job for the selected schedule date.</p>
+            </div>
+          </div>
+          <form class="add-schedule-form" id="addScheduleForm" novalidate>
+            <p class="form-error-summary hidden" id="addScheduleErrorSummary" role="alert">Please complete the required fields below.</p>
+            <label>
+              Schedule Date <span class="required-mark">*</span>
+              <input id="newScheduleDate" name="date" type="date" required>
+              <label class="inline-option">
+                <input id="newScheduleDateTba" type="checkbox">
+                TBA
+              </label>
+              <small class="field-error" data-error-for="date"></small>
+            </label>
+            <label>
+              Requested Time <span class="required-mark">*</span>
+              <select id="newRequestedTime" name="requestedTime" required></select>
+              <small class="field-error" data-error-for="requestedTime"></small>
+            </label>
+            <label>
+              Schedule Type <span class="required-mark">*</span>
+              <select id="newScheduleType" name="type" required></select>
+              <small class="field-error" data-error-for="type"></small>
+            </label>
+            <div class="form-wide schedule-type-shortcuts" aria-label="Schedule type quick selection">
+              <span>Quick Select Type</span>
+              <div>
+                <button class="type-shortcut" type="button" data-type-shortcut="Delivery">Delivery</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Customer Self-Collection">Customer Self-Collection</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Collection at Vendor Place">Collection at Vendor Place</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Technical">Technical</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Onsite">Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Delivery + Onsite">Delivery + Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Site Survey">Site Survey</button>
+              </div>
+            </div>
+            <label>
+              Reference Number (PS/PR/PO) <span class="required-mark">*</span>
+              <input id="newPsNo" name="psNo" type="text" list="psNumberOptions" placeholder="Search or enter reference number" autocomplete="off" required>
+              <datalist id="psNumberOptions"></datalist>
+              <small class="field-help">Select a mock reference record to auto fill company, products and location.</small>
+              <small class="field-error" data-error-for="psNo"></small>
+            </label>
+            <label>
+              Company Name <span class="required-mark">*</span>
+              <input id="newCompanyName" name="companyName" type="text" required>
+              <small class="field-error" data-error-for="companyName"></small>
+            </label>
+            <label>
+              Location <span class="required-mark">*</span>
+              <input id="newLocation" name="location" type="text" required>
+              <small class="field-error" data-error-for="location"></small>
+            </label>
+            <label class="form-wide">
+              Products / Items <span class="required-mark">*</span>
+              <textarea id="newProducts" name="products" rows="3" required></textarea>
+              <small class="field-error" data-error-for="products"></small>
+            </label>
+            <label>
+              Assigned Role
+              <select id="newAssignedRole" name="assignedRole"></select>
+              <small class="field-error" data-error-for="assignedRole"></small>
+            </label>
+            <label>
+              Assigned Person
+              <select id="newAssignedPerson" name="assignedPerson">
+                <option value="">Select assigned role first</option>
+              </select>
+              <small class="field-error" data-error-for="assignedPerson"></small>
+            </label>
+            <label>
+              Input By <span class="required-mark">*</span>
+              <input id="newInputBy" name="inputBy" type="text" required readonly>
+              <small class="field-error" data-error-for="inputBy"></small>
+            </label>
+            <label>
+              Status <span class="required-mark">*</span>
+              <select id="newStatus" name="status" required></select>
+              <small class="field-error" data-error-for="status"></small>
+            </label>
+            <label class="form-wide">
+              Completion Remarks
+              <textarea id="newRemarks" name="remarks" rows="3" placeholder="Add operational notes, if available"></textarea>
+            </label>
+            <div class="form-actions form-wide">
+              <button class="primary-button" type="submit">Save Schedule</button>
+              <button class="secondary-button" id="clearAddScheduleForm" type="button">Clear Form</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section class="schedule-panel hidden" id="dailySchedule">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Schedule List</p>
+            <h2 id="scheduleHeading">Daily Schedule</h2>
+            <p class="last-updated panel-updated" id="scheduleLastUpdated">Last updated: --:--:--</p>
+          </div>
+          <div class="schedule-actions">
+            <button class="secondary-button" id="printDailySchedule" type="button">Print Daily Schedule</button>
+            <button class="secondary-button" id="exportScheduleCsv" type="button">Export CSV</button>
+            <button class="secondary-button" id="exportSchedulePdf" type="button">Export PDF</button>
+            <button class="primary-button hidden" id="addScheduleButton" type="button">
+              <span aria-hidden="true">+</span>
+              Add Schedule
+            </button>
+          </div>
+        </div>
+
+        <section class="schedule-filters" aria-label="Daily schedule search and filters">
+          <div class="schedule-filter-grid">
+            <label class="schedule-search">
+              Search
+              <input id="scheduleSearch" type="search" placeholder="Search reference no., company, items, assignee or input by">
+            </label>
+            <label>
+              Schedule Type
+              <select id="scheduleTypeFilter">
+                <option value="">All Types</option>
+              </select>
+            </label>
+            <label>
+              Status
+              <select id="scheduleStatusFilter">
+                <option value="">All Statuses</option>
+              </select>
+            </label>
+            <label>
+              Assigned Role
+              <select id="assignedRoleFilter">
+                <option value="">All Roles</option>
+              </select>
+            </label>
+            <label>
+              Input By
+              <select id="inputByFilter">
+                <option value="">All Users</option>
+              </select>
+            </label>
+            <label>
+              Sort By
+              <select id="scheduleSort">
+                <option value="date-asc">Date - Earliest First</option>
+                <option value="date-desc">Date - Latest First</option>
+                <option value="time-asc" selected>Requested Time - Earliest First</option>
+                <option value="time-desc">Requested Time - Latest First</option>
+                <option value="status-asc">Status</option>
+              </select>
+            </label>
+          </div>
+          <div class="quick-filter-row">
+            <span class="quick-filter-label">Quick Filters</span>
+            <button class="quick-filter-button" type="button" data-schedule-quick="today">Today</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="tomorrow">Tomorrow</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="TBA">TBA</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="Submitted">Submitted</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="Pending">Pending</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="Ready to Ship">Ready to Ship</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="In Progress">In Progress</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="Completed">Completed</button>
+            <button class="quick-filter-button" type="button" data-schedule-quick="Carried Forward">Carried Forward</button>
+          </div>
+          <div class="filter-summary">
+            <strong id="filteredScheduleCount">0 results</strong>
+            <div class="schedule-view-controls">
+              <div class="view-toggle" role="group" aria-label="Schedule view">
+                <button class="view-toggle-button selected" type="button" data-schedule-view="table" aria-pressed="true">Table View</button>
+                <button class="view-toggle-button" type="button" data-schedule-view="timeline" aria-pressed="false">Timeline View</button>
+              </div>
+              <button class="secondary-button" id="clearScheduleFilters" type="button">Clear Filters</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="table-container">
+          <table id="dailyScheduleTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Requested Time</th>
+                <th>Schedule Type</th>
+                <th>Reference Number (PS/PR/PO)</th>
+                <th>Company Name</th>
+                <th>Products / Items</th>
+                <th>Location</th>
+                <th>Assigned Role</th>
+                <th>Assigned Person</th>
+                <th>Input By</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleRows"></tbody>
+          </table>
+          <div class="empty-schedule hidden" id="emptySchedule">
+            <h3>No schedules found</h3>
+            <p>No scheduled activities match the selected date and filters.</p>
+          </div>
+        </div>
+        <section class="timeline-container hidden" id="dailyScheduleTimeline" aria-label="Timeline View">
+          <header class="timeline-heading">
+            <p class="eyebrow">Timeline View</p>
+            <h3 id="timelineDateHeading"></h3>
+          </header>
+          <div class="timeline-list" id="timelineRows"></div>
+          <div class="empty-schedule hidden" id="emptyTimeline">
+            <h3>No schedules found</h3>
+            <p>No scheduled activities match the selected date and filters.</p>
+          </div>
+        </section>
+      </section>
+
+      <section class="user-management hidden" id="userManagement">
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">Administration</p>
+            <h1>User Management</h1>
+            <p class="subtitle">Approve new accounts and manage access to the Daily Schedule System.</p>
+          </div>
+        </div>
+
+        <section class="workflow-notice" aria-label="User approval workflow">
+          <strong>Approval workflow</strong>
+          <p>New sign-ups begin as <b>Pending Approval</b>. Admin approval is required before a user can log in.</p>
+        </section>
+
+        <section class="schedule-panel user-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Account Directory</p>
+              <h2>System Users</h2>
+            </div>
+          </div>
+          <div class="user-table-container">
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Created Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="userRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="edit-panel hidden" id="editUserPanel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Edit Account</p>
+              <h2>Update User</h2>
+            </div>
+          </div>
+          <form class="edit-user-form" id="editUserForm">
+            <input id="editUserId" type="hidden">
+            <label>
+              Username
+              <input id="editUsername" type="text" required>
+            </label>
+            <label>
+              Role
+              <select id="editRole" required>
+                <option value="Sales">Sales</option>
+                <option value="Warehouse">Warehouse</option>
+                <option value="Management">Management</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </label>
+            <div class="edit-actions">
+              <button class="primary-button" type="submit">Save Changes</button>
+              <button class="secondary-button" id="cancelEditUser" type="button">Cancel</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section class="role-settings hidden" id="roleSettings">
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">Administration</p>
+            <h1>Role Settings</h1>
+            <p class="subtitle">Review and update permissions for each operational role.</p>
+          </div>
+        </div>
+
+        <section class="workflow-notice" aria-label="Report access rules">
+          <strong>Report access rules</strong>
+          <p>Sales can view only reports from their own submissions. Warehouse can view all reports to arrange and monitor schedules. Management can view all reports and summary information. Admin has full access.</p>
+        </section>
+
+        <section class="schedule-panel permission-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Permissions Matrix</p>
+              <h2>Role Access</h2>
+            </div>
+          </div>
+          <div class="permission-table-container">
+            <table class="permission-table">
+              <thead>
+                <tr>
+                  <th>Role</th>
+                  <th>View Own Report</th>
+                  <th>View All Reports</th>
+                  <th>Schedule Arrangement</th>
+                  <th>Update Status</th>
+                  <th>User Management</th>
+                  <th>System Settings</th>
+                  <th>Additional Permissions</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="permissionRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="access-editor hidden" id="roleEditor">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Edit Role</p>
+              <h2 id="roleEditorTitle">Update Permissions</h2>
+            </div>
+          </div>
+          <form class="permission-form" id="rolePermissionForm">
+            <input id="editingRoleName" type="hidden">
+            <div class="permission-options" id="rolePermissionOptions"></div>
+            <div class="edit-actions">
+              <button class="primary-button" type="submit">Save Changes</button>
+              <button class="secondary-button" id="cancelRoleEdit" type="button">Cancel</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="schedule-panel override-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Individual Access</p>
+              <h2>User Permission Override</h2>
+              <p class="panel-description">Grant extra access to individual users without changing their base role.</p>
+            </div>
+          </div>
+          <div class="user-table-container">
+            <table class="override-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Base Role</th>
+                  <th>Extra Permission</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="overrideRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="access-editor hidden" id="overrideEditor">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Edit Access</p>
+              <h2 id="overrideEditorTitle">User Permission Override</h2>
+            </div>
+          </div>
+          <form class="permission-form" id="overrideForm">
+            <input id="editingOverrideId" type="hidden">
+            <div class="permission-options" id="overridePermissionOptions"></div>
+            <div class="edit-actions">
+              <button class="primary-button" type="submit">Save Changes</button>
+              <button class="secondary-button" id="cancelOverrideEdit" type="button">Cancel</button>
+            </div>
+          </form>
+        </section>
+      </section>
+
+      <section class="testing-checklist hidden" id="testingChecklist">
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">Administration</p>
+            <h1>Testing Checklist</h1>
+            <p class="subtitle">Record frontend verification results before demo review or operational handover.</p>
+          </div>
+        </div>
+
+        <section class="user-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Quality Assurance</p>
+              <h2>Frontend Feature Checks</h2>
+              <p class="panel-description">Checklist notes remain local to this browser; operational records are saved to the database.</p>
+            </div>
+          </div>
+          <div class="checklist-table-container">
+            <table class="checklist-table">
+              <thead>
+                <tr>
+                  <th>Test Item</th>
+                  <th>Expected Result</th>
+                  <th>Status</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody id="testingChecklistRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="system-settings hidden" id="systemSettings">
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">Administration</p>
+            <h1>System Settings</h1>
+            <p class="subtitle">Manage frontend configuration values for the Daily Schedule System.</p>
+          </div>
+        </div>
+
+        <div class="settings-grid">
+          <section class="settings-card profile-settings">
+            <div class="settings-title">
+              <p class="eyebrow">Organisation</p>
+              <h2>Company Profile</h2>
+            </div>
+            <form class="settings-form" id="companyProfileForm">
+              <label>
+                Company Name
+                <input id="companySetting" type="text" value="Datacom Enterprise Pte Ltd">
+              </label>
+              <label>
+                System Name
+                <input id="systemNameSetting" type="text" value="Daily Schedule System">
+              </label>
+              <label>
+                Support Email
+                <input id="supportEmailSetting" type="email" value="itsupportdatacom@gmail.com">
+              </label>
+              <label>
+                Logo Path
+                <input id="logoPathSetting" type="text" value="assets/logo.png">
+              </label>
+              <button class="primary-button setting-save" type="submit">Save Profile</button>
+            </form>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-title">
+              <p class="eyebrow">Schedule Options</p>
+              <h2>Schedule Type Settings</h2>
+            </div>
+            <div class="setting-tags" id="scheduleTypeList"></div>
+            <button class="secondary-button add-setting" id="addScheduleType" type="button">+ Add New Type</button>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-title">
+              <p class="eyebrow">Workflow</p>
+              <h2>Status Settings</h2>
+            </div>
+            <div class="setting-tags" id="statusSettingList"></div>
+            <button class="secondary-button add-setting" id="addStatusSetting" type="button">+ Add New Status</button>
+          </section>
+
+          <section class="settings-card">
+            <div class="settings-title">
+              <p class="eyebrow">Operating Window</p>
+              <h2>Working Hours</h2>
+            </div>
+            <form class="settings-form" id="workingHoursForm">
+              <div class="time-setting-row">
+                <label>
+                  Start Time
+                  <input id="workingStartTime" type="time" value="08:30">
+                </label>
+                <label>
+                  End Time
+                  <input id="workingEndTime" type="time" value="18:00">
+                </label>
+              </div>
+              <label>
+                Default Schedule Date Setting
+                <select id="defaultScheduleDate">
+                  <option selected>Today</option>
+                  <option>Next Working Day</option>
+                  <option>Last Selected Date</option>
+                </select>
+              </label>
+              <button class="primary-button setting-save" type="submit">Save Hours</button>
+            </form>
+          </section>
+
+          <section class="settings-card maintenance-settings">
+            <div class="settings-title">
+              <p class="eyebrow">Administration</p>
+              <h2>System Maintenance</h2>
+            </div>
+            <button class="secondary-button maintenance-button" id="exportDataButton" type="button">Export Data</button>
+            <section class="maintenance-note">
+              <strong>Backup Reminder</strong>
+              <p>Schedule a weekly backup export once backend data storage is connected.</p>
+            </section>
+            <button class="secondary-button maintenance-button" id="auditLogButton" type="button">View Audit Log</button>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <section class="modal-backdrop hidden" id="scheduleDetailsModal" aria-hidden="true">
+    <div class="details-modal" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+      <header class="details-header">
+        <div>
+          <p class="eyebrow">Schedule Details</p>
+          <h2 id="detailsTitle">Schedule Record</h2>
+        </div>
+        <button class="modal-close" id="closeDetailsIcon" type="button" aria-label="Close schedule details">&times;</button>
+      </header>
+      <div class="details-grid">
+        <div class="detail-item">
+          <span>Schedule Date</span>
+          <strong id="detailDate"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Requested Time</span>
+          <strong id="detailTime"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Schedule Type</span>
+          <strong id="detailType"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Reference Number (PS/PR/PO)</span>
+          <strong id="detailPsNo"></strong>
+        </div>
+        <div class="detail-item hidden" id="detailCarriedForwardGroup">
+          <span>Carried Forward From</span>
+          <strong id="detailCarriedForwardFrom"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Status</span>
+          <div id="detailStatus"></div>
+        </div>
+        <div class="detail-item">
+          <span>Field Sync Status</span>
+          <div id="detailFieldSyncStatus"></div>
+        </div>
+        <div class="detail-item detail-wide">
+          <span>Products / Items</span>
+          <strong id="detailProducts"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Company Name</span>
+          <strong id="detailCompany"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Location</span>
+          <strong id="detailLocation"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Assigned Role</span>
+          <strong id="detailAssignedRole"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Assigned Person</span>
+          <strong id="detailAssignedPerson"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Input By</span>
+          <strong id="detailInputBy"></strong>
+        </div>
+        <div class="detail-item detail-wide">
+          <span>Completion Remarks</span>
+          <strong id="detailRemarks"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Created Date/Time</span>
+          <strong id="detailCreated"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Last Updated By</span>
+          <strong id="detailUpdatedBy"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Last Updated Date/Time</span>
+          <strong id="detailUpdatedAt"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Field Updated By</span>
+          <strong id="detailFieldUpdatedBy"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Field Updated Time</span>
+          <strong id="detailFieldUpdatedAt"></strong>
+        </div>
+      </div>
+      <section class="details-workflow hidden" id="scheduleEditPanel" aria-label="Edit schedule">
+        <div class="workflow-heading">
+          <h3>Edit Schedule</h3>
+          <p>Update operational information for this job.</p>
+        </div>
+        <form id="scheduleEditForm" class="schedule-edit-form">
+          <label>
+            Schedule Date
+            <input id="editScheduleDate" type="date" required>
+            <label class="inline-option">
+              <input id="editScheduleDateTba" type="checkbox">
+              TBA
+            </label>
+          </label>
+          <label>
+            Requested Time
+            <select id="editRequestedTime" required></select>
+          </label>
+          <label>
+            Schedule Type
+            <select id="editScheduleType" required></select>
+          </label>
+          <label>
+            Reference Number (PS/PR/PO)
+            <input id="editPsNo" type="text" required>
+          </label>
+          <label>
+            Company Name
+            <input id="editCompanyName" type="text" required>
+          </label>
+          <label>
+            Location
+            <input id="editLocation" type="text" required>
+          </label>
+          <label class="workflow-wide">
+            Products / Items
+            <textarea id="editProducts" rows="3" required></textarea>
+          </label>
+          <label>
+            Assigned Role
+            <select id="editAssignedRole"></select>
+          </label>
+          <label>
+            Assigned Person
+            <input id="editAssignedPerson" type="text">
+          </label>
+          <label class="workflow-wide">
+            Completion Remarks
+            <textarea id="editRemarks" rows="3"></textarea>
+          </label>
+          <div class="workflow-actions workflow-wide">
+            <button class="primary-button" type="submit">Save Changes</button>
+            <button class="secondary-button" id="cancelScheduleEdit" type="button">Cancel</button>
+          </div>
+        </form>
+      </section>
+      <section class="details-workflow hidden" id="statusUpdatePanel" aria-label="Update schedule status">
+        <div class="workflow-heading">
+          <h3>Update Status</h3>
+          <p>Add completion remarks before saving the new status.</p>
+        </div>
+        <form id="statusUpdateForm" class="schedule-edit-form">
+          <label>
+            New Status
+            <select id="newScheduleStatus" required></select>
+          </label>
+          <label class="workflow-wide">
+            Completion Remarks
+            <textarea id="statusRemarks" rows="3" required placeholder="Enter progress or completion remarks"></textarea>
+          </label>
+          <div class="workflow-actions workflow-wide">
+            <button class="primary-button" type="submit">Save Status</button>
+            <button class="secondary-button" id="cancelStatusUpdate" type="button">Cancel</button>
+          </div>
+        </form>
+      </section>
+      <footer class="details-actions">
+        <button class="secondary-button" id="editScheduleDetail" type="button">Edit Schedule</button>
+        <button class="secondary-button" id="updateScheduleStatus" type="button">Update Status</button>
+        <button class="secondary-button" id="carryForwardSchedule" type="button">Carry Forward</button>
+        <button class="primary-button" id="sendToFieldPlatform" type="button">Send to Field Platform</button>
+        <button class="secondary-button" id="printScheduleDetails" type="button">Print Job Details</button>
+        <button class="secondary-button" id="closeScheduleDetails" type="button">Close</button>
+      </footer>
+    </div>
+  </section>
+
+  <section class="modal-backdrop confirmation-backdrop hidden" id="carryForwardModal" aria-hidden="true">
+    <div class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="carryForwardTitle">
+      <header class="details-header">
+        <div>
+          <p class="eyebrow">Confirmation</p>
+          <h2 id="carryForwardTitle">Carry Forward Schedule</h2>
+        </div>
+        <button class="modal-close" id="closeCarryForwardIcon" type="button" aria-label="Close carry forward confirmation">&times;</button>
+      </header>
+      <form class="schedule-edit-form carry-forward-form" id="carryForwardForm" novalidate>
+        <p class="carry-forward-note workflow-wide">The current job will be marked as Carried Forward and a linked continuation job will be created.</p>
+        <label>
+          New Schedule Date
+          <input id="carryForwardDate" type="date" required>
+          <label class="inline-option">
+            <input id="carryForwardDateTba" type="checkbox">
+            TBA
+          </label>
+        </label>
+        <label>
+          Requested Time
+          <select id="carryForwardTime" required></select>
+        </label>
+        <label>
+          New Job Status
+          <select id="carryForwardStatus" required>
+            <option value="Submitted">Submitted</option>
+            <option value="Pending">Pending</option>
+            <option value="Ready to Ship">Ready to Ship</option>
+            <option value="In Progress">In Progress</option>
+          </select>
+        </label>
+        <label class="workflow-wide">
+          Carry Forward Reason / Remarks
+          <textarea id="carryForwardReason" rows="4" required placeholder="Explain why this job must continue on the selected date"></textarea>
+          <small class="carry-forward-error hidden" id="carryForwardError" role="alert"></small>
+        </label>
+        <div class="workflow-actions workflow-wide">
+          <button class="primary-button" type="submit">Confirm Carry Forward</button>
+          <button class="secondary-button" id="cancelCarryForward" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="modal-backdrop confirmation-backdrop hidden" id="resetPasswordModal" aria-hidden="true">
+    <div class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="resetPasswordTitle">
+      <header class="details-header">
+        <div>
+          <p class="eyebrow">Confirmation</p>
+          <h2 id="resetPasswordTitle">Reset Password</h2>
+        </div>
+        <button class="modal-close" id="closeResetPasswordIcon" type="button" aria-label="Close reset password form">&times;</button>
+      </header>
+      <form class="schedule-edit-form reset-password-form" id="resetPasswordForm" novalidate>
+        <input id="resetPasswordUserId" type="hidden">
+        <p class="carry-forward-note workflow-wide">Set a new password for <strong id="resetPasswordUsername"></strong>.</p>
+        <label class="workflow-wide">
+          New Password
+          <input id="newUserPassword" type="password" autocomplete="new-password" required>
+          <small class="reset-password-error" id="newUserPasswordError" role="alert"></small>
+        </label>
+        <label class="workflow-wide">
+          Confirm New Password
+          <input id="confirmNewUserPassword" type="password" autocomplete="new-password" required>
+          <small class="reset-password-error" id="confirmNewUserPasswordError" role="alert"></small>
+        </label>
+        <div class="workflow-actions workflow-wide">
+          <button class="primary-button" type="submit">Reset Password</button>
+          <button class="secondary-button" id="cancelResetPassword" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="modal-backdrop confirmation-backdrop hidden" id="changePasswordModal" aria-hidden="true">
+    <div class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="changePasswordTitle">
+      <header class="details-header">
+        <div>
+          <p class="eyebrow">My Account</p>
+          <h2 id="changePasswordTitle">Change Password</h2>
+        </div>
+        <button class="modal-close" id="closeChangePasswordIcon" type="button" aria-label="Close change password form">&times;</button>
+      </header>
+      <form class="schedule-edit-form reset-password-form" id="changePasswordForm" novalidate>
+        <p class="carry-forward-note workflow-wide">If an Admin gives you a temporary password, change it here after signing in.</p>
+        <label class="workflow-wide">
+          Current Password
+          <input id="currentUserPassword" type="password" autocomplete="current-password" required>
+          <small class="reset-password-error" id="currentUserPasswordError" role="alert"></small>
+        </label>
+        <label class="workflow-wide">
+          New Password
+          <input id="changedUserPassword" type="password" autocomplete="new-password" required>
+          <small class="reset-password-error" id="changedUserPasswordError" role="alert"></small>
+        </label>
+        <label class="workflow-wide">
+          Confirm New Password
+          <input id="confirmChangedUserPassword" type="password" autocomplete="new-password" required>
+          <small class="reset-password-error" id="confirmChangedUserPasswordError" role="alert"></small>
+        </label>
+        <div class="workflow-actions workflow-wide">
+          <button class="primary-button" type="submit">Save Password</button>
+          <button class="secondary-button" id="cancelChangePassword" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="modal-backdrop confirmation-backdrop hidden" id="deleteUserModal" aria-hidden="true">
+    <div class="confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="deleteUserTitle">
+      <header class="details-header">
+        <div>
+          <p class="eyebrow">Confirmation</p>
+          <h2 id="deleteUserTitle">Delete User</h2>
+        </div>
+        <button class="modal-close" id="closeDeleteUserIcon" type="button" aria-label="Close delete user confirmation">&times;</button>
+      </header>
+      <form class="delete-user-form" id="deleteUserForm" novalidate>
+        <input id="deleteUserId" type="hidden">
+        <p class="delete-user-warning">Are you sure you want to permanently delete this user?</p>
+        <p class="delete-user-name">User: <strong id="deleteUsername"></strong></p>
+        <div class="workflow-actions">
+          <button class="danger-button" type="submit">Confirm Delete</button>
+          <button class="secondary-button" id="cancelDeleteUser" type="button">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section class="print-daily-schedule" id="printDailyScheduleSheet" aria-hidden="true">
+    <header class="print-schedule-header">
+      <h1>Datacom Enterprise Pte Ltd</h1>
+      <h2>Daily Schedule</h2>
+      <p>Schedule Date: <strong id="printScheduleDate"></strong></p>
+    </header>
+    <table class="print-schedule-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Time</th>
+          <th>Type</th>
+          <th>Reference Number (PS/PR/PO)</th>
+          <th>Company Name</th>
+          <th>Products / Items</th>
+          <th>Location</th>
+          <th>Assigned Role</th>
+          <th>Assigned Person</th>
+          <th>Input By</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="printScheduleRows"></tbody>
+    </table>
+  </section>
+
+  <div class="toast" id="dashboardToast" role="status" aria-live="polite"></div>
+  <script src="dashboard.js"></script>
+</body>
+</html>

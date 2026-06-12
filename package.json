@@ -1,0 +1,13 @@
+{
+  "name": "datacom-daily-schedule-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Frontend development server for Datacom Daily Schedule System.",
+  "scripts": {
+    "start": "node frontend-server.js",
+    "dev": "node frontend-server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

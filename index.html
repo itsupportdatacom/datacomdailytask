@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Datacom Daily Schedule System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="brand-panel" aria-label="Datacom Daily Schedule System">
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo.png" alt="">
+        <div>
+          <p class="brand-company">Datacom Enterprise Pte Ltd</p>
+          <p class="brand-product">Daily Schedule System</p>
+        </div>
+      </div>
+
+      <div class="hero-content">
+        <p class="eyebrow">Workforce Coordination</p>
+        <h1>Plan every day with clarity and control.</h1>
+        <p class="hero-description">
+          A centralized workspace for teams to coordinate activities,
+          manage schedules, and stay aligned on daily priorities.
+        </p>
+
+        <div class="feature-grid" aria-label="System advantages">
+          <article class="feature">
+            <span class="feature-icon" aria-hidden="true">&#128197;</span>
+            <div>
+              <h2>Daily Planning</h2>
+              <p>Organize operational tasks.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <span class="feature-icon" aria-hidden="true">&#128101;</span>
+            <div>
+              <h2>Team Access</h2>
+              <p>Support role-based workflows.</p>
+            </div>
+          </article>
+          <article class="feature">
+            <span class="feature-icon" aria-hidden="true">&#10003;</span>
+            <div>
+              <h2>Track Progress</h2>
+              <p>Stay on top of each shift.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <p class="copyright">&copy; 2026 Datacom. Daily Schedule System.</p>
+    </section>
+
+    <section class="form-panel">
+      <div class="login-card">
+        <div class="mobile-brand">
+          <img class="brand-logo" src="assets/logo.png" alt="">
+          <div>
+            <p class="brand-company">Datacom Enterprise Pte Ltd</p>
+            <p class="brand-product">Daily Schedule System</p>
+          </div>
+        </div>
+        <p class="eyebrow blue" id="formEyebrow">Secure Login</p>
+        <h2 id="formTitle">Welcome Back</h2>
+        <p class="welcome-text" id="formIntro">Sign in to access the Daily Schedule System.</p>
+
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="username">Username</label>
+            <div class="input-wrap">
+              <span class="field-icon" aria-hidden="true">&#128100;</span>
+              <input id="username" name="username" type="text" autocomplete="username" placeholder="Enter username" required>
+            </div>
+            <p class="error-text" id="usernameError"></p>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <div class="input-wrap password-wrap">
+              <span class="field-icon" aria-hidden="true">&#128274;</span>
+              <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+              <button class="password-toggle" id="passwordToggle" type="button" aria-label="Show password">
+                <span id="toggleLabel">Show</span>
+              </button>
+            </div>
+            <p class="error-text" id="passwordError"></p>
+          </div>
+
+          <div class="login-options">
+            <label class="remember">
+              <input id="rememberMe" type="checkbox">
+              <span>Remember me</span>
+            </label>
+            <a href="#" id="forgotLink">Forgot Password?</a>
+          </div>
+
+          <button class="login-button" type="submit">
+            <span>Login</span>
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </form>
+
+        <form class="hidden" id="signupForm" novalidate>
+          <div class="field">
+            <label for="signupUsername">Username</label>
+            <div class="input-wrap">
+              <span class="field-icon" aria-hidden="true">&#128100;</span>
+              <input id="signupUsername" type="text" autocomplete="username" placeholder="Choose username" required>
+            </div>
+            <p class="error-text" id="signupUsernameError"></p>
+          </div>
+
+          <div class="field">
+            <label for="signupPassword">Password</label>
+            <div class="input-wrap">
+              <span class="field-icon" aria-hidden="true">&#128274;</span>
+              <input id="signupPassword" type="password" autocomplete="new-password" placeholder="Create password" required>
+            </div>
+            <p class="error-text" id="signupPasswordError"></p>
+          </div>
+
+          <div class="field">
+            <label for="confirmPassword">Confirm Password</label>
+            <div class="input-wrap">
+              <span class="field-icon" aria-hidden="true">&#128274;</span>
+              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="Confirm password" required>
+            </div>
+            <p class="error-text" id="confirmPasswordError"></p>
+          </div>
+
+          <div class="field">
+            <label for="signupRole">Role</label>
+            <div class="select-wrap">
+              <select id="signupRole" required>
+                <option value="" selected disabled>Select your role</option>
+                <option value="Sales">Sales</option>
+                <option value="Warehouse">Warehouse</option>
+                <option value="Management">Management</option>
+              </select>
+            </div>
+            <p class="error-text" id="signupRoleError"></p>
+          </div>
+
+          <button class="login-button" type="submit">
+            <span>Create Account</span>
+            <span aria-hidden="true">&rarr;</span>
+          </button>
+        </form>
+
+        <p class="signup-text" id="signupPrompt">Don't have an account? <a href="#" id="signupLink">Sign Up</a></p>
+        <p class="signup-text hidden" id="loginPrompt">Already have an account? <a href="#" id="loginLink">Back to Login</a></p>
+        <p class="form-message" id="formMessage" role="status" aria-live="polite"></p>
+
+        <div class="support">
+          <p>Need help?</p>
+          <p>Contact IT Support: <a href="mailto:itsupportdatacom@gmail.com">itsupportdatacom@gmail.com</a></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>
