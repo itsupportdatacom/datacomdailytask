@@ -1082,6 +1082,104 @@
   </section>
 
   <div class="toast" id="dashboardToast" role="status" aria-live="polite"></div>
+
+  <!-- ========== NEW: AUTH TOKEN INTERCEPTOR & SESSION HANDLER ========== -->
+  <script>
+    (function() {
+      const SESSION_KEY = "datacomDailySchedule.session";
+      const API_BASE = "https://desktop-19n0dfj.taildafd1a.ts.net:8444/api";
+
+      // Helper to get token from session
+      function getToken() {
+        try {
+          const session = localStorage.getItem(SESSION_KEY);
+          if (!session) return null;
+          const data = JSON.parse(session);
+          return data.token || null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      // Save user info to UI (top bar)
+      function updateUserDisplay() {
+        try {
+          const session = localStorage.getItem(SESSION_KEY);
+          if (session) {
+            const data = JSON.parse(session);
+            if (data.username) {
+              const nameEl = document.getElementById('profileName');
+              const roleEl = document.getElementById('profileRole');
+              if (nameEl) nameEl.textContent = data.username;
+              if (roleEl) roleEl.textContent = data.role || 'User';
+              // also update avatar initials
+              const avatar = document.querySelector('.avatar');
+              if (avatar && data.username) {
+                avatar.textContent = data.username.substring(0,2).toUpperCase();
+              }
+            }
+          }
+        } catch(e) {}
+      }
+
+      // Redirect to login if no token (except for the login page itself)
+      function checkAuth() {
+        const token = getToken();
+        if (!token && window.location.pathname !== '/index.html' && window.location.pathname !== '/') {
+          window.location.href = 'index.html';
+        }
+      }
+
+      // Intercept fetch to add Authorization header for API calls
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        let url = args[0];
+        let options = args[1] || {};
+        // Only add token if the request is to our API base
+        if (typeof url === 'string' && url.includes(API_BASE)) {
+          const token = getToken();
+          if (token) {
+            options.headers = options.headers || {};
+            if (!options.headers['Authorization']) {
+              options.headers['Authorization'] = `Bearer ${token}`;
+            }
+          }
+        }
+        // Also if using relative paths that start with /api (since API_BASE may be overridden)
+        if (typeof url === 'string' && url.startsWith('/api')) {
+          const token = getToken();
+          if (token) {
+            options.headers = options.headers || {};
+            if (!options.headers['Authorization']) {
+              options.headers['Authorization'] = `Bearer ${token}`;
+            }
+          }
+        }
+        return originalFetch.call(this, url, options).then(response => {
+          // If 401 Unauthorized, clear session and redirect
+          if (response.status === 401) {
+            localStorage.removeItem(SESSION_KEY);
+            window.location.href = 'index.html';
+            return Promise.reject(new Error('Session expired'));
+          }
+          return response;
+        });
+      };
+
+      // On page load, check auth and update UI
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+          checkAuth();
+          updateUserDisplay();
+        });
+      } else {
+        checkAuth();
+        updateUserDisplay();
+      }
+    })();
+  </script>
+  <!-- ========== END AUTH TOKEN INTERCEPTOR ========== -->
+
   <script src="dashboard.js"></script>
 </body>
 </html>
