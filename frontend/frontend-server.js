@@ -70,5 +70,5 @@ const server = http.createServer((request, response) => {
 
 server.listen(port, () => {
   console.log(`Frontend running at http://localhost:${port}`);
-  console.log("Backend API expected at http://localhost:5000/api");
+  console.log("Backend API expected at https://desktop-19n0dfj.taildafd1a.ts.net:8444/api");
 });
