@@ -11,7 +11,7 @@ const { pool, testConnection } = require("./db");
 const { registerRoutes } = require("./routes");
 
 const app = express();
-const port = Number(process.env.PORT) || 5000;
+const port = Number(process.env.PORT) || 5001;
 const frontendPath = path.join(__dirname, "..");
 
 async function ensureScheduleWorkflowSchema() {
