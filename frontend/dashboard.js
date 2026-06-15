@@ -111,7 +111,20 @@ let userOverrides = [
   }
 ];
 
-const defaultScheduleTypes = ["Delivery", "Customer Self-Collection", "Collection at Vendor Place", "Technical", "Onsite", "Delivery + Onsite", "Site Survey"];
+const defaultScheduleTypes = [
+  "Delivery",
+  "Customer Self-Collection",
+  "Collection at Vendor Place",
+  "Engineer Onsite",
+  "Technician Onsite",
+  "Engineer Remote",
+  "Delivery + Technician Onsite",
+  "Delivery + Engineer Onsite",
+  "Delivery + All Involved",
+  "Site Survey",
+  "Lazada Dropoff",
+  "Shopee Dropoff"
+];
 const defaultScheduleStatuses = ["Submitted", "Pending", "Ready to Ship", "In Progress", "Completed", "Carried Forward", "Cancelled"];
 const statusDescriptions = {
   Submitted: "Sales submitted the schedule request and Warehouse needs to review it.",
@@ -127,10 +140,6 @@ const tbaValue = "TBA";
 const requestedTimeOptions = [
   anytimeRequestedTime,
   tbaValue,
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
   "10:00",
   "10:30",
   "11:00",
@@ -150,7 +159,18 @@ const requestedTimeOptions = [
 const referenceNumberPattern = /\b(?:PS|PR|PO)-[A-Z0-9-]+\b/i;
 let scheduleTypes = [...defaultScheduleTypes];
 let scheduleStatuses = [...defaultScheduleStatuses];
-const assignedRoleOptions = ["Driver", "Technician", "Engineer", "Warehouse"];
+const assignedRoleOptions = ["Driver", "Technician", "Engineer", "All Team"];
+const assignedPersonOptions = ["Liang", "Chojen", "Karthik", "Bala", "Devi", "June"];
+const priorityOptions = ["Normal", "Urgent", "Critical"];
+const onsiteServiceTypes = [
+  "Engineer Onsite",
+  "Technician Onsite",
+  "Engineer Remote",
+  "Delivery + Technician Onsite",
+  "Delivery + Engineer Onsite",
+  "Delivery + All Involved",
+  "Site Survey"
+];
 const fieldSyncStatuses = [
   "Not Sent",
   "Sent to Field Platform",
@@ -189,10 +209,10 @@ const psReferenceRecords = [
 ];
 
 const assignmentDirectory = {
-  Driver: ["Nur Aisyah", "Lim Wei Jie", "Marcus Lee"],
-  Technician: ["Siti Hajar", "Daniel Wong"],
-  Engineer: ["Ravi Kumar", "Pravin Nair"],
-  Warehouse: ["Daniel Tan", "Esther Lim", "Karthik"]
+  Driver: assignedPersonOptions,
+  Technician: assignedPersonOptions,
+  Engineer: assignedPersonOptions,
+  "All Team": assignedPersonOptions
 };
 
 // Future backend audit fields: Created By, Created Role, Created Date/Time,
@@ -577,8 +597,13 @@ const elements = {
   newCompanyName: document.getElementById("newCompanyName"),
   newProducts: document.getElementById("newProducts"),
   newLocation: document.getElementById("newLocation"),
+  newPic: document.getElementById("newPic"),
+  newContactNumber: document.getElementById("newContactNumber"),
   newAssignedRole: document.getElementById("newAssignedRole"),
   newAssignedPerson: document.getElementById("newAssignedPerson"),
+  newAssignedPersonButton: document.getElementById("newAssignedPersonButton"),
+  newAssignedPersonPanel: document.getElementById("newAssignedPersonPanel"),
+  newPriority: document.getElementById("newPriority"),
   newInputBy: document.getElementById("newInputBy"),
   newStatus: document.getElementById("newStatus"),
   newRemarks: document.getElementById("newRemarks"),
@@ -624,8 +649,11 @@ const elements = {
   detailProducts: document.getElementById("detailProducts"),
   detailCompany: document.getElementById("detailCompany"),
   detailLocation: document.getElementById("detailLocation"),
+  detailPic: document.getElementById("detailPic"),
+  detailContactNumber: document.getElementById("detailContactNumber"),
   detailAssignedRole: document.getElementById("detailAssignedRole"),
   detailAssignedPerson: document.getElementById("detailAssignedPerson"),
+  detailPriority: document.getElementById("detailPriority"),
   detailInputBy: document.getElementById("detailInputBy"),
   detailRemarks: document.getElementById("detailRemarks"),
   detailCreated: document.getElementById("detailCreated"),
@@ -648,10 +676,15 @@ const elements = {
   editScheduleType: document.getElementById("editScheduleType"),
   editPsNo: document.getElementById("editPsNo"),
   editCompanyName: document.getElementById("editCompanyName"),
+  editPic: document.getElementById("editPic"),
+  editContactNumber: document.getElementById("editContactNumber"),
   editLocation: document.getElementById("editLocation"),
   editProducts: document.getElementById("editProducts"),
   editAssignedRole: document.getElementById("editAssignedRole"),
   editAssignedPerson: document.getElementById("editAssignedPerson"),
+  editAssignedPersonButton: document.getElementById("editAssignedPersonButton"),
+  editAssignedPersonPanel: document.getElementById("editAssignedPersonPanel"),
+  editPriority: document.getElementById("editPriority"),
   editRemarks: document.getElementById("editRemarks"),
   cancelScheduleEdit: document.getElementById("cancelScheduleEdit"),
   statusUpdatePanel: document.getElementById("statusUpdatePanel"),
@@ -1239,7 +1272,7 @@ function renderMetrics() {
   elements.selfCollectionCount.textContent = countType(selectedEntries, "Customer Self-Collection");
   elements.vendorCollectionCount.textContent = countType(selectedEntries, "Collection at Vendor Place");
   elements.technicalCount.textContent = String(
-    selectedEntries.filter((entry) => ["Technical", "Onsite", "Delivery + Onsite", "Site Survey"].includes(entry.type)).length
+    selectedEntries.filter((entry) => onsiteServiceTypes.includes(entry.type)).length
   );
   elements.submittedCount.textContent = countStatus(selectedEntries, "Submitted");
   elements.pendingCount.textContent = countStatus(selectedEntries, "Pending");
@@ -1463,7 +1496,9 @@ function prepareAddScheduleForm() {
   setRequiredSelectOptions(elements.newRequestedTime, requestedTimeOptions, "Select requested time");
   setRequiredSelectOptions(elements.newScheduleType, scheduleTypes, "Select schedule type");
   setFilterOptions(elements.newAssignedRole, assignedRoleOptions, "Optional");
+  setRequiredSelectOptions(elements.newPriority, priorityOptions, "Select priority", "Normal");
   setRequiredSelectOptions(elements.newStatus, scheduleStatuses, "Select status", "Submitted");
+  elements.newStatus.disabled = session.role === "Sales";
   renderPsReferenceOptions();
   renderAssignedPersonOptions();
   updateTypeShortcuts();
@@ -1504,12 +1539,8 @@ function fillFromPsReference() {
 
 function renderAssignedPersonOptions() {
   const selectedRole = elements.newAssignedRole.value;
-  const people = assignmentDirectory[selectedRole] || [];
-  setFilterOptions(
-    elements.newAssignedPerson,
-    people,
-    selectedRole ? "Optional" : "Optional"
-  );
+  const people = assignmentDirectory[selectedRole] || assignedPersonOptions;
+  setMultiSelectOptions(elements.newAssignedPerson, people, getSelectedMultiValues(elements.newAssignedPerson));
 }
 
 function updateTypeShortcuts() {
@@ -1526,6 +1557,101 @@ function selectScheduleType(type) {
     error.textContent = "";
   }
   updateTypeShortcuts();
+}
+
+function getSelectedMultiValues(selectElement) {
+  return Array.from(selectElement.selectedOptions).map((option) => option.value).filter(Boolean);
+}
+
+function setMultiSelectOptions(selectElement, values, selectedValues = []) {
+  const selectedSet = new Set(
+    Array.isArray(selectedValues) ? selectedValues : String(selectedValues || "").split(",").map((value) => value.trim())
+  );
+  const options = values.map((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    option.selected = selectedSet.has(value);
+    return option;
+  });
+  selectElement.replaceChildren(...options);
+  renderMultiSelectDropdown(selectElement);
+}
+
+function getMultiSelectParts(selectElement) {
+  if (selectElement === elements.newAssignedPerson) {
+    return {
+      button: elements.newAssignedPersonButton,
+      panel: elements.newAssignedPersonPanel,
+      placeholder: "Select assigned person"
+    };
+  }
+  if (selectElement === elements.editAssignedPerson) {
+    return {
+      button: elements.editAssignedPersonButton,
+      panel: elements.editAssignedPersonPanel,
+      placeholder: "Select assigned person"
+    };
+  }
+  return {};
+}
+
+function updateMultiSelectSummary(selectElement) {
+  const { button, placeholder } = getMultiSelectParts(selectElement);
+  if (!button) {
+    return;
+  }
+  const selectedValues = getSelectedMultiValues(selectElement);
+  button.textContent = selectedValues.length ? selectedValues.join(", ") : placeholder;
+  button.classList.toggle("has-value", selectedValues.length > 0);
+}
+
+function renderMultiSelectDropdown(selectElement) {
+  const { panel } = getMultiSelectParts(selectElement);
+  if (!panel) {
+    return;
+  }
+  const checkboxes = Array.from(selectElement.options).map((option) => {
+    const label = document.createElement("label");
+    label.className = "multi-select-option";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.value = option.value;
+    checkbox.checked = option.selected;
+    checkbox.addEventListener("change", () => {
+      option.selected = checkbox.checked;
+      selectElement.classList.remove("invalid-field");
+      getMultiSelectParts(selectElement).button?.classList.remove("invalid-field");
+      updateMultiSelectSummary(selectElement);
+    });
+    label.append(checkbox, document.createTextNode(option.textContent));
+    return label;
+  });
+  panel.replaceChildren(...checkboxes);
+  updateMultiSelectSummary(selectElement);
+}
+
+function toggleMultiSelectPanel(selectElement) {
+  const { button, panel } = getMultiSelectParts(selectElement);
+  if (!button || !panel) {
+    return;
+  }
+  const willOpen = panel.classList.contains("hidden");
+  document.querySelectorAll(".multi-select-panel").forEach((openPanel) => {
+    openPanel.classList.add("hidden");
+  });
+  document.querySelectorAll(".multi-select-button").forEach((openButton) => {
+    openButton.setAttribute("aria-expanded", "false");
+  });
+  panel.classList.toggle("hidden", !willOpen);
+  button.setAttribute("aria-expanded", String(willOpen));
+}
+
+function splitAssignedPeople(value) {
+  return String(value || "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name && name !== "-");
 }
 
 function setRequiredSelectOptions(selectElement, values, placeholder, selectedValue = "") {
@@ -1796,8 +1922,8 @@ function filterPreviewSchedules(entries) {
     case "Customer Self-Collection":
     case "Collection at Vendor Place":
       return entries.filter((entry) => entry.type === previewFilter);
-    case "Technical / Onsite Jobs":
-      return entries.filter((entry) => ["Technical", "Onsite"].includes(entry.type));
+    case "Onsite / Remote Jobs":
+      return entries.filter((entry) => onsiteServiceTypes.includes(entry.type));
     case "Submitted":
     case "Ready to Ship":
     case "In Progress":
@@ -1941,8 +2067,11 @@ function createScheduleRow(entry) {
   row.appendChild(createCell(entry.companyName, "company-name"));
   row.appendChild(createCell(entry.products, "products"));
   row.appendChild(createCell(entry.location));
+  row.appendChild(createCell(entry.pic || "-"));
+  row.appendChild(createCell(entry.contactNumber || "-"));
   row.appendChild(createCell(entry.assignedRole || "-", "assigned-role"));
   row.appendChild(createCell(entry.assignedPerson || "-"));
+  row.appendChild(createCell(entry.priority || "Normal"));
   row.appendChild(createCell(entry.inputBy, "input-by"));
 
   const statusCell = document.createElement("td");
@@ -1981,8 +2110,11 @@ function openScheduleDetails(scheduleId) {
   elements.detailProducts.textContent = entry.products;
   elements.detailCompany.textContent = entry.companyName;
   elements.detailLocation.textContent = entry.location;
+  elements.detailPic.textContent = entry.pic || "-";
+  elements.detailContactNumber.textContent = entry.contactNumber || "-";
   elements.detailAssignedRole.textContent = entry.assignedRole || "-";
   elements.detailAssignedPerson.textContent = entry.assignedPerson || "-";
+  elements.detailPriority.textContent = entry.priority || "Normal";
   elements.detailInputBy.textContent = entry.inputBy;
   elements.detailRemarks.textContent = entry.remarks;
   elements.detailCreated.textContent = entry.createdAt;
@@ -1990,6 +2122,12 @@ function openScheduleDetails(scheduleId) {
   elements.detailUpdatedAt.textContent = entry.lastUpdatedAt;
   elements.detailFieldUpdatedBy.textContent = entry.fieldUpdatedBy;
   elements.detailFieldUpdatedAt.textContent = entry.fieldUpdatedAt;
+  const canEdit = canEditSchedule(entry);
+  const canUpdateStatus = canUpdateScheduleStatus(entry);
+  elements.editScheduleDetail.classList.toggle("hidden", !canEdit);
+  elements.updateScheduleStatus.classList.toggle("hidden", !canUpdateStatus);
+  elements.carryForwardSchedule.classList.toggle("hidden", !canCarryForwardSchedule(entry));
+  elements.sendToFieldPlatform.classList.toggle("hidden", !["Admin", "Warehouse"].includes(session.role));
   elements.scheduleDetailsModal.classList.remove("hidden");
   elements.scheduleDetailsModal.setAttribute("aria-hidden", "false");
   elements.closeDetailsIcon.focus();
@@ -2085,9 +2223,82 @@ function refreshScheduleViews(entry) {
   openScheduleDetails(entry.id);
 }
 
+function isCurrentUserSchedule(entry) {
+  return String(entry.inputBy || "").toLowerCase() === String(session.username || "").toLowerCase();
+}
+
+function getEditableScheduleFields(entry) {
+  if (session.role === "Admin") {
+    return "all";
+  }
+  if (session.role === "Warehouse") {
+    return ["Submitted", "Pending", "Ready to Ship", "In Progress", "Carried Forward"].includes(entry.status) ? "all" : [];
+  }
+  if (session.role !== "Sales" || !isCurrentUserSchedule(entry)) {
+    return [];
+  }
+  const salesEditRules = {
+    Submitted: "all",
+    Pending: ["date", "requestedTime", "companyName", "location", "products", "remarks"],
+    "In Progress": ["remarks", "contactNumber"],
+    "Ready to Ship": ["remarks"],
+    "Carried Forward": ["date", "requestedTime", "remarks"],
+    Completed: [],
+    Cancelled: []
+  };
+  return salesEditRules[entry.status] || [];
+}
+
+function canEditSchedule(entry) {
+  const fields = getEditableScheduleFields(entry);
+  return fields === "all" || fields.length > 0;
+}
+
+function canUpdateScheduleStatus(entry) {
+  if (session.role === "Admin") {
+    return true;
+  }
+  return session.role === "Warehouse" && !["Completed", "Cancelled"].includes(entry.status);
+}
+
+function canCarryForwardSchedule(entry) {
+  return ["Admin", "Warehouse"].includes(session.role) && !["Completed", "Cancelled"].includes(entry.status);
+}
+
+function setScheduleEditAccess(entry) {
+  const fields = getEditableScheduleFields(entry);
+  const editableAll = fields === "all";
+  const editableSet = new Set(editableAll ? [] : fields);
+  const fieldMap = {
+    date: [elements.editScheduleDate, elements.editScheduleDateTba],
+    requestedTime: [elements.editRequestedTime],
+    type: [elements.editScheduleType],
+    psNo: [elements.editPsNo],
+    companyName: [elements.editCompanyName],
+    location: [elements.editLocation],
+    products: [elements.editProducts],
+    pic: [elements.editPic],
+    contactNumber: [elements.editContactNumber],
+    assignedRole: [elements.editAssignedRole],
+    assignedPerson: [elements.editAssignedPerson],
+    priority: [elements.editPriority],
+    remarks: [elements.editRemarks]
+  };
+  Object.entries(fieldMap).forEach(([fieldName, controls]) => {
+    const canEditField = editableAll || editableSet.has(fieldName);
+    controls.forEach((control) => {
+      control.disabled = !canEditField;
+    });
+  });
+}
+
 function openScheduleEditor() {
   const entry = getSelectedScheduleRecord();
   if (!entry) {
+    return;
+  }
+  if (!canEditSchedule(entry)) {
+    showToast("This schedule is read only for your role and current status.");
     return;
   }
   elements.statusUpdatePanel.classList.add("hidden");
@@ -2099,13 +2310,23 @@ function openScheduleEditor() {
   setSelectOptions(elements.editScheduleType, scheduleTypes, entry.type);
   elements.editPsNo.value = entry.psNo;
   elements.editCompanyName.value = entry.companyName;
+  elements.editPic.value = entry.pic === "-" ? "" : entry.pic;
+  elements.editContactNumber.value = entry.contactNumber === "-" ? "" : entry.contactNumber;
   elements.editLocation.value = entry.location;
   elements.editProducts.value = entry.products;
   setFilterOptions(elements.editAssignedRole, assignedRoleOptions, "Optional", entry.assignedRole === "-" ? "" : entry.assignedRole);
-  elements.editAssignedPerson.value = entry.assignedPerson === "-" ? "" : entry.assignedPerson;
+  renderEditAssignedPersonOptions(entry.assignedPerson);
+  setSelectOptions(elements.editPriority, priorityOptions, entry.priority || "Normal");
   elements.editRemarks.value = entry.remarks;
+  setScheduleEditAccess(entry);
   elements.scheduleEditPanel.classList.remove("hidden");
   elements.editScheduleDate.focus();
+}
+
+function renderEditAssignedPersonOptions(selectedPeople = "") {
+  const selectedRole = elements.editAssignedRole.value;
+  const people = assignmentDirectory[selectedRole] || assignedPersonOptions;
+  setMultiSelectOptions(elements.editAssignedPerson, people, splitAssignedPeople(selectedPeople));
 }
 
 async function saveScheduleChanges(event) {
@@ -2120,10 +2341,13 @@ async function saveScheduleChanges(event) {
     type: elements.editScheduleType.value,
     psNo: elements.editPsNo.value.trim(),
     companyName: elements.editCompanyName.value.trim(),
+    pic: elements.editPic.value.trim() || "-",
+    contactNumber: elements.editContactNumber.value.trim() || "-",
     location: elements.editLocation.value.trim(),
     products: elements.editProducts.value.trim(),
     assignedRole: elements.editAssignedRole.value,
-    assignedPerson: elements.editAssignedPerson.value.trim(),
+    assignedPerson: getSelectedMultiValues(elements.editAssignedPerson).join(", ") || "-",
+    priority: elements.editPriority.value,
     remarks: elements.editRemarks.value.trim() || "-",
     status: entry.status
   };
@@ -2132,9 +2356,10 @@ async function saveScheduleChanges(event) {
       method: "PUT",
       body: JSON.stringify(updates)
     });
-    replaceSchedule(result.schedule);
-    refreshScheduleViews(result.schedule);
-    showToast(`${result.schedule.psNo} schedule details updated.`);
+    const savedSchedule = { ...updates, ...result.schedule };
+    replaceSchedule(savedSchedule);
+    refreshScheduleViews(savedSchedule);
+    showToast(`${savedSchedule.psNo} schedule details updated.`);
     await refreshNotifications();
   } catch (error) {
     showToast(error.message);
@@ -2146,8 +2371,12 @@ function openStatusEditor(selectedStatus) {
   if (!entry) {
     return;
   }
+  if (!canUpdateScheduleStatus(entry)) {
+    showToast("Status updates are not available for your role on this schedule.");
+    return;
+  }
   elements.scheduleEditPanel.classList.add("hidden");
-  const regularStatuses = scheduleStatuses.filter((status) => !["Submitted", "Carried Forward"].includes(status));
+  const regularStatuses = scheduleStatuses;
   const selectedValue = regularStatuses.includes(selectedStatus || entry.status)
     ? selectedStatus || entry.status
     : "Ready to Ship";
@@ -2256,8 +2485,11 @@ function getScheduleExportCells(entry) {
     entry.companyName,
     entry.products,
     entry.location,
+    entry.pic || "-",
+    entry.contactNumber || "-",
     entry.assignedRole || "-",
     entry.assignedPerson || "-",
+    entry.priority || "Normal",
     entry.inputBy,
     entry.status
   ];
@@ -2291,8 +2523,11 @@ function exportFilteredScheduleCsv() {
     "Company Name",
     "Products / Items",
     "Location",
+    "PIC",
+    "Contact Number",
     "Assigned Role",
     "Assigned Person",
+    "Priority",
     "Input By",
     "Status"
   ];
@@ -2378,7 +2613,11 @@ function getFilteredSchedule() {
       entry.psNo,
       entry.companyName,
       entry.products,
+      entry.location,
+      entry.pic || "",
+      entry.contactNumber || "",
       entry.assignedPerson || "",
+      entry.priority || "",
       entry.inputBy
     ].join(" ").toLowerCase();
     const matchesSearch = !query || searchableValues.includes(query);
@@ -2456,6 +2695,9 @@ function clearAddScheduleErrors() {
   elements.addScheduleForm.querySelectorAll(".invalid-field").forEach((field) => {
     field.classList.remove("invalid-field");
   });
+  elements.addScheduleForm.querySelectorAll(".multi-select-button").forEach((button) => {
+    button.classList.remove("invalid-field");
+  });
 }
 
 function getRequiredScheduleFields() {
@@ -2467,6 +2709,11 @@ function getRequiredScheduleFields() {
     { element: elements.newCompanyName, name: "companyName", label: "Company Name" },
     { element: elements.newProducts, name: "products", label: "Products / Items" },
     { element: elements.newLocation, name: "location", label: "Location" },
+    { element: elements.newPic, name: "pic", label: "PIC" },
+    { element: elements.newContactNumber, name: "contactNumber", label: "Contact Number" },
+    { element: elements.newAssignedRole, name: "assignedRole", label: "Assigned Role" },
+    { element: elements.newAssignedPerson, name: "assignedPerson", label: "Assigned Person" },
+    { element: elements.newPriority, name: "priority", label: "Priority" },
     { element: elements.newInputBy, name: "inputBy", label: "Input By" },
     { element: elements.newStatus, name: "status", label: "Status" }
   ].filter((field) => field.name !== "date" || !elements.newScheduleDateTba.checked);
@@ -2476,16 +2723,24 @@ function validateAddScheduleForm() {
   clearAddScheduleErrors();
   let firstInvalidField;
   getRequiredScheduleFields().forEach(({ element, name, label }) => {
-    if (!element.value.trim()) {
+    const value = element.multiple ? getSelectedMultiValues(element).join(",") : element.value.trim();
+    if (!value) {
       const message = elements.addScheduleForm.querySelector(`[data-error-for="${name}"]`);
       message.textContent = `${label} is required.`;
       element.classList.add("invalid-field");
+      if (element.multiple) {
+        getMultiSelectParts(element).button?.classList.add("invalid-field");
+      }
       firstInvalidField = firstInvalidField || element;
     }
   });
   if (firstInvalidField) {
     elements.addScheduleErrorSummary.classList.remove("hidden");
-    firstInvalidField.focus();
+    if (firstInvalidField.multiple) {
+      getMultiSelectParts(firstInvalidField).button?.focus();
+    } else {
+      firstInvalidField.focus();
+    }
     return false;
   }
   return true;
@@ -2512,24 +2767,29 @@ async function saveNewSchedule(event) {
     companyName: elements.newCompanyName.value.trim(),
     products: elements.newProducts.value.trim(),
     location: elements.newLocation.value.trim(),
+    pic: elements.newPic.value.trim(),
+    contactNumber: elements.newContactNumber.value.trim(),
     assignedRole: elements.newAssignedRole.value,
-    assignedPerson: elements.newAssignedPerson.value.trim(),
+    assignedPerson: getSelectedMultiValues(elements.newAssignedPerson).join(", "),
+    priority: elements.newPriority.value,
     inputBy: elements.newInputBy.value.trim(),
     remarks: elements.newRemarks.value.trim() || "-",
-    status: elements.newStatus.value,
+    status: session.role === "Sales" ? "Submitted" : elements.newStatus.value,
+    fieldSyncStatus: "Not Sent",
   };
   try {
     const result = await apiRequest("/schedules", {
       method: "POST",
       body: JSON.stringify(record)
     });
-    replaceSchedule(result.schedule);
-    setDashboardDate(result.schedule.date);
+    const savedSchedule = { ...record, ...result.schedule };
+    replaceSchedule(savedSchedule);
+    setDashboardDate(savedSchedule.date);
     renderScheduleFilterOptions();
     clearScheduleFilters();
     renderSelectedDate();
     showSection("dailySchedule", session.role === "Sales" ? "My Schedule" : "Daily Schedule");
-    showToast(`${result.schedule.psNo} schedule saved successfully.`);
+    showToast(`${savedSchedule.psNo} schedule saved successfully.`);
     await refreshNotifications();
   } catch (error) {
     showToast(error.message);
@@ -2555,13 +2815,31 @@ function scheduleTimeSortValue(value) {
   return time === anytimeRequestedTime ? "10:00" : time;
 }
 
+function normalizeScheduleType(value) {
+  const legacyTypeMap = {
+    Technical: "Technician Onsite",
+    Onsite: "Engineer Onsite",
+    "Delivery + Onsite": "Delivery + Technician Onsite"
+  };
+  return legacyTypeMap[value] || value || "Delivery";
+}
+
+function normalizeAssignedRole(value) {
+  return value === "Warehouse" ? "All Team" : value;
+}
+
 function normalizeScheduleRecord(record) {
   return {
     ...record,
     date: record.date || tbaValue,
     requestedTime: normalizeRequestedTime(record.requestedTime),
-    assignedRole: record.assignedRole || "-",
-    assignedPerson: record.assignedPerson || "-"
+    type: normalizeScheduleType(record.type),
+    assignedRole: normalizeAssignedRole(record.assignedRole) || "-",
+    assignedPerson: record.assignedPerson || "-",
+    pic: record.pic || "-",
+    contactNumber: record.contactNumber || "-",
+    priority: record.priority || "Normal",
+    fieldSyncStatus: record.fieldSyncStatus || "Not Sent"
   };
 }
 
@@ -2674,6 +2952,16 @@ function bindActions() {
   elements.newPsNo.addEventListener("change", fillFromPsReference);
   elements.newPsNo.addEventListener("input", fillFromPsReference);
   elements.newAssignedRole.addEventListener("change", renderAssignedPersonOptions);
+  elements.editAssignedRole.addEventListener("change", () => renderEditAssignedPersonOptions());
+  elements.newAssignedPersonButton.addEventListener("click", () => toggleMultiSelectPanel(elements.newAssignedPerson));
+  elements.editAssignedPersonButton.addEventListener("click", () => toggleMultiSelectPanel(elements.editAssignedPerson));
+  document.addEventListener("click", (event) => {
+    if (event.target.closest(".multi-select")) {
+      return;
+    }
+    document.querySelectorAll(".multi-select-panel").forEach((panel) => panel.classList.add("hidden"));
+    document.querySelectorAll(".multi-select-button").forEach((button) => button.setAttribute("aria-expanded", "false"));
+  });
   elements.newScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, elements.newScheduleDateTba.checked));
   elements.editScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.editScheduleDate, elements.editScheduleDateTba, elements.editScheduleDateTba.checked));
   elements.carryForwardDateTba.addEventListener("change", () => setTbaDateControl(elements.carryForwardDate, elements.carryForwardDateTba, elements.carryForwardDateTba.checked));

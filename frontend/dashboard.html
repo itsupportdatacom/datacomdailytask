@@ -125,9 +125,9 @@
             </div>
             <span class="metric-icon" aria-hidden="true">&#128666;</span>
           </article>
-          <article class="metric-card technical" data-filter="Technical / Onsite Jobs" tabindex="0" role="button" aria-pressed="false">
+          <article class="metric-card technical" data-filter="Onsite / Remote Jobs" tabindex="0" role="button" aria-pressed="false">
             <div>
-              <p>Technical / Onsite Jobs</p>
+              <p>Onsite / Remote Jobs</p>
               <strong id="technicalCount">0</strong>
               <small>Assigned for date</small>
             </div>
@@ -270,9 +270,11 @@
                 <button class="type-shortcut" type="button" data-type-shortcut="Delivery">Delivery</button>
                 <button class="type-shortcut" type="button" data-type-shortcut="Customer Self-Collection">Customer Self-Collection</button>
                 <button class="type-shortcut" type="button" data-type-shortcut="Collection at Vendor Place">Collection at Vendor Place</button>
-                <button class="type-shortcut" type="button" data-type-shortcut="Technical">Technical</button>
-                <button class="type-shortcut" type="button" data-type-shortcut="Onsite">Onsite</button>
-                <button class="type-shortcut" type="button" data-type-shortcut="Delivery + Onsite">Delivery + Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Engineer Onsite">Engineer Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Technician Onsite">Technician Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Engineer Remote">Engineer Remote</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Delivery + Technician Onsite">Delivery + Technician Onsite</button>
+                <button class="type-shortcut" type="button" data-type-shortcut="Delivery + Engineer Onsite">Delivery + Engineer Onsite</button>
                 <button class="type-shortcut" type="button" data-type-shortcut="Site Survey">Site Survey</button>
               </div>
             </div>
@@ -287,6 +289,16 @@
               Company Name <span class="required-mark">*</span>
               <input id="newCompanyName" name="companyName" type="text" required>
               <small class="field-error" data-error-for="companyName"></small>
+            </label>
+            <label>
+              PIC <span class="required-mark">*</span>
+              <input id="newPic" name="pic" type="text" required>
+              <small class="field-error" data-error-for="pic"></small>
+            </label>
+            <label>
+              Contact Number <span class="required-mark">*</span>
+              <input id="newContactNumber" name="contactNumber" type="tel" required>
+              <small class="field-error" data-error-for="contactNumber"></small>
             </label>
             <label>
               Location <span class="required-mark">*</span>
@@ -305,10 +317,21 @@
             </label>
             <label>
               Assigned Person
-              <select id="newAssignedPerson" name="assignedPerson">
+              <select class="native-multi-source" id="newAssignedPerson" name="assignedPerson" multiple>
                 <option value="">Select assigned role first</option>
               </select>
+              <div class="multi-select" data-multi-select-for="newAssignedPerson">
+                <button class="multi-select-button" id="newAssignedPersonButton" type="button" aria-expanded="false" aria-controls="newAssignedPersonPanel">
+                  Select assigned person
+                </button>
+                <div class="multi-select-panel hidden" id="newAssignedPersonPanel"></div>
+              </div>
               <small class="field-error" data-error-for="assignedPerson"></small>
+            </label>
+            <label>
+              Priority <span class="required-mark">*</span>
+              <select id="newPriority" name="priority" required></select>
+              <small class="field-error" data-error-for="priority"></small>
             </label>
             <label>
               Input By <span class="required-mark">*</span>
@@ -321,7 +344,7 @@
               <small class="field-error" data-error-for="status"></small>
             </label>
             <label class="form-wide">
-              Completion Remarks
+              Remarks
               <textarea id="newRemarks" name="remarks" rows="3" placeholder="Add operational notes, if available"></textarea>
             </label>
             <div class="form-actions form-wide">
@@ -426,8 +449,11 @@
                 <th>Company Name</th>
                 <th>Products / Items</th>
                 <th>Location</th>
+                <th>PIC</th>
+                <th>Contact Number</th>
                 <th>Assigned Role</th>
                 <th>Assigned Person</th>
+                <th>Priority</th>
                 <th>Input By</th>
                 <th>Status</th>
               </tr>
@@ -802,12 +828,24 @@
           <strong id="detailLocation"></strong>
         </div>
         <div class="detail-item">
+          <span>PIC</span>
+          <strong id="detailPic"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Contact Number</span>
+          <strong id="detailContactNumber"></strong>
+        </div>
+        <div class="detail-item">
           <span>Assigned Role</span>
           <strong id="detailAssignedRole"></strong>
         </div>
         <div class="detail-item">
           <span>Assigned Person</span>
           <strong id="detailAssignedPerson"></strong>
+        </div>
+        <div class="detail-item">
+          <span>Priority</span>
+          <strong id="detailPriority"></strong>
         </div>
         <div class="detail-item">
           <span>Input By</span>
@@ -869,6 +907,14 @@
             <input id="editCompanyName" type="text" required>
           </label>
           <label>
+            PIC
+            <input id="editPic" type="text">
+          </label>
+          <label>
+            Contact Number
+            <input id="editContactNumber" type="tel">
+          </label>
+          <label>
             Location
             <input id="editLocation" type="text" required>
           </label>
@@ -882,10 +928,20 @@
           </label>
           <label>
             Assigned Person
-            <input id="editAssignedPerson" type="text">
+            <select class="native-multi-source" id="editAssignedPerson" multiple></select>
+            <div class="multi-select" data-multi-select-for="editAssignedPerson">
+              <button class="multi-select-button" id="editAssignedPersonButton" type="button" aria-expanded="false" aria-controls="editAssignedPersonPanel">
+                Select assigned person
+              </button>
+              <div class="multi-select-panel hidden" id="editAssignedPersonPanel"></div>
+            </div>
+          </label>
+          <label>
+            Priority
+            <select id="editPriority"></select>
           </label>
           <label class="workflow-wide">
-            Completion Remarks
+            Remarks / Completion Remarks
             <textarea id="editRemarks" rows="3"></textarea>
           </label>
           <div class="workflow-actions workflow-wide">
@@ -1071,8 +1127,11 @@
           <th>Company Name</th>
           <th>Products / Items</th>
           <th>Location</th>
+          <th>PIC</th>
+          <th>Contact Number</th>
           <th>Assigned Role</th>
           <th>Assigned Person</th>
+          <th>Priority</th>
           <th>Input By</th>
           <th>Status</th>
         </tr>
