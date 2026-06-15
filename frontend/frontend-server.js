@@ -12,6 +12,7 @@ const pageFiles = new Set([
   "/dashboard.html",
   "/style.css",
   "/dashboard.css",
+  "/config.js",
   "/main.js",
   "/dashboard.js"
 ]);
