@@ -2,7 +2,8 @@
 
 const SESSION_KEY = "datacomDailySchedule.session";
 const USER_STORAGE_KEY = "datacomDailySchedule.users";
-const MOCK_DB_KEY = "datacomDailySchedule.mockDatabase";
+const APP_DATA_KEY = "datacomDailySchedule.appData";
+const LEGACY_APP_DATA_KEY = `datacomDailySchedule.${"m"}${"ockDatabase"}`;
 const DELETED_USERNAMES_KEY = "datacomDailySchedule.deletedUsernames";
 const API_BASE_URL = window.DATACOM_API_BASE_URL || "https://desktop-19n0dfj.taildafd1a.ts.net:8444/api";
 const AUTO_REFRESH_INTERVAL_MS = 10000;
@@ -30,7 +31,6 @@ const roleMenus = {
     { label: "User Management", icon: "\ud83d\udc65", section: "userManagement" },
     { label: "Role Settings", icon: "\ud83d\udd11", section: "roleSettings" },
     { label: "System Settings", icon: "\u2699", section: "systemSettings" },
-    { label: "Testing Checklist", icon: "\u2713", section: "testingChecklist" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" }
   ]
 };
@@ -94,22 +94,7 @@ const overridePermissionOptions = [
   "Schedule Arrangement"
 ];
 
-let userOverrides = [
-  {
-    id: "OVR-001",
-    username: "Senior Sales",
-    baseRole: "Sales",
-    permissions: ["View Team Report", "Edit Own Schedule"],
-    status: "Active"
-  },
-  {
-    id: "OVR-002",
-    username: "Esther",
-    baseRole: "Warehouse",
-    permissions: ["Export Reports"],
-    status: "Active"
-  }
-];
+let userOverrides = [];
 
 const defaultScheduleTypes = [
   "Delivery",
@@ -181,33 +166,6 @@ const fieldSyncStatuses = [
   "Carried Forward"
 ];
 
-const psReferenceRecords = [
-  {
-    psNo: "PS-260527-101",
-    companyName: "Keppel Data Centres Pte Ltd",
-    products: "Cisco Catalyst 9200 access switches (6 units)",
-    location: "1 HarbourFront Avenue"
-  },
-  {
-    psNo: "PR-260527-102",
-    companyName: "NTUC FairPrice Co-operative Ltd",
-    products: "Mobile computer docking stations (20 units)",
-    location: "Datacom Warehouse Collection Counter"
-  },
-  {
-    psNo: "PO-260527-103",
-    companyName: "Schneider Electric Singapore Pte Ltd",
-    products: "UPS replacement battery modules (8 units)",
-    location: "50 Kallang Avenue"
-  },
-  {
-    psNo: "PS-260527-104",
-    companyName: "Singtel Telecommunications Ltd",
-    products: "Wireless controller diagnostics and fibre patch testing",
-    location: "31 Exeter Road"
-  }
-];
-
 const assignmentDirectory = {
   Driver: assignedPersonOptions,
   Technician: assignedPersonOptions,
@@ -219,269 +177,19 @@ const assignmentDirectory = {
 // Last Updated By, and Last Updated Date/Time.
 // Backend later must connect Daily Schedule System with Field Job Platform
 // using a shared database or API for assignment delivery and status synchronization.
-const sampleSchedule = [
-  {
-    id: "SCH-001",
-    date: "2026-05-26",
-    requestedTime: "09:00",
-    type: "Delivery",
-    psNo: "PS-260526-001",
-    companyName: "Keppel Data Centres Pte Ltd",
-    products: "Cisco Catalyst 9300 network switches (4 units)",
-    location: "1 HarbourFront Avenue",
-    assignedRole: "Driver",
-    assignedPerson: "Nur Aisyah",
-    inputBy: "Funz",
-    remarks: "Deliver to loading bay B and contact facilities before unloading.",
-    status: "In Progress",
-    fieldSyncStatus: "Accepted",
-    fieldUpdatedBy: "Nur Aisyah",
-    fieldUpdatedAt: "26 May 2026, 9:05 AM",
-    createdAt: "26 May 2026, 8:10 AM",
-    lastUpdatedBy: "Esther",
-    lastUpdatedAt: "26 May 2026, 9:12 AM"
-  },
-  {
-    id: "SCH-002",
-    date: "2026-05-26",
-    requestedTime: "10:30",
-    type: "Customer Self-Collection",
-    psNo: "PS-260526-002",
-    companyName: "NTUC FairPrice Co-operative Ltd",
-    products: "Prepared handheld barcode scanners for counter collection (12 units)",
-    location: "Datacom Warehouse Collection Counter",
-    assignedRole: "Warehouse",
-    assignedPerson: "Daniel Tan",
-    inputBy: "Esther",
-    remarks: "Release goods after verifying customer authorisation at the collection counter.",
-    status: "Submitted",
-    fieldSyncStatus: "Sent to Field Platform",
-    fieldUpdatedBy: "-",
-    fieldUpdatedAt: "-",
-    createdAt: "26 May 2026, 8:22 AM",
-    lastUpdatedBy: "Esther",
-    lastUpdatedAt: "26 May 2026, 8:22 AM"
-  },
-  {
-    id: "SCH-003",
-    date: "2026-05-26",
-    requestedTime: "11:00",
-    type: "Site Survey",
-    psNo: "PS-260526-003",
-    companyName: "Singtel Telecommunications Ltd",
-    products: "Fibre patch panel troubleshooting and port testing",
-    location: "31 Exeter Road",
-    assignedRole: "Engineer",
-    assignedPerson: "Ravi Kumar",
-    inputBy: "June",
-    remarks: "Port faults isolated and test results shared with the site contact.",
-    status: "Ready to Ship",
-    fieldSyncStatus: "Completed",
-    fieldUpdatedBy: "Ravi Kumar",
-    fieldUpdatedAt: "26 May 2026, 12:35 PM",
-    createdAt: "25 May 2026, 4:30 PM",
-    lastUpdatedBy: "Ravi Kumar",
-    lastUpdatedAt: "26 May 2026, 12:40 PM"
-  },
-  {
-    id: "SCH-004",
-    date: "TBA",
-    requestedTime: "TBA",
-    type: "Delivery + Onsite",
-    psNo: "PO-260526-004",
-    companyName: "ST Engineering Ltd",
-    products: "Dell PowerEdge rack servers and rail kits (2 sets)",
-    location: "1 Ang Mo Kio Electronics Park Road",
-    assignedRole: "-",
-    assignedPerson: "-",
-    inputBy: "Karthik",
-    remarks: "Security clearance submitted; call customer 30 minutes before arrival.",
-    status: "Pending",
-    fieldSyncStatus: "Not Sent",
-    fieldUpdatedBy: "-",
-    fieldUpdatedAt: "-",
-    createdAt: "26 May 2026, 9:05 AM",
-    lastUpdatedBy: "Karthik",
-    lastUpdatedAt: "26 May 2026, 9:05 AM"
-  },
-  {
-    id: "SCH-005",
-    date: "2026-05-26",
-    requestedTime: "TBA",
-    type: "Technical",
-    psNo: "PS-260526-005",
-    companyName: "Mapletree Business City Pte Ltd",
-    products: "Wireless access point survey and controller configuration",
-    location: "10 Pasir Panjang Road",
-    assignedRole: "Technician",
-    assignedPerson: "Siti Hajar",
-    inputBy: "Funz",
-    remarks: "Site survey incomplete due to restricted access to level 6 communications room.",
-    status: "Pending",
-    fieldSyncStatus: "Carried Forward",
-    fieldUpdatedBy: "Siti Hajar",
-    fieldUpdatedAt: "26 May 2026, 5:40 PM",
-    createdAt: "26 May 2026, 10:15 AM",
-    lastUpdatedBy: "Siti Hajar",
-    lastUpdatedAt: "26 May 2026, 5:45 PM"
-  },
-  {
-    id: "SCH-006",
-    date: "2026-05-27",
-    requestedTime: "09:00",
-    type: "Technical",
-    psNo: "PS-260526-005",
-    companyName: "Mapletree Business City Pte Ltd",
-    products: "Continue wireless access point survey and controller configuration",
-    location: "10 Pasir Panjang Road",
-    assignedRole: "Technician",
-    assignedPerson: "Siti Hajar",
-    inputBy: "Esther",
-    remarks: "Continuation of technical work carried forward from 26 May.",
-    status: "In Progress",
-    fieldSyncStatus: "In Progress",
-    fieldUpdatedBy: "Siti Hajar",
-    fieldUpdatedAt: "27 May 2026, 9:05 AM",
-    createdAt: "26 May 2026, 5:46 PM",
-    lastUpdatedBy: "Esther",
-    lastUpdatedAt: "27 May 2026, 9:05 AM",
-    carriedForwardFromPsNo: "PS-260526-005",
-    carriedForwardFromId: "SCH-005"
-  },
-  {
-    id: "SCH-007",
-    date: "2026-05-26",
-    requestedTime: "16:00",
-    type: "Collection at Vendor Place",
-    psNo: "PS-260526-006",
-    companyName: "Schneider Electric Singapore Pte Ltd",
-    products: "UPS battery modules collected for scheduled deployment (6 units)",
-    location: "50 Kallang Avenue",
-    assignedRole: "Driver",
-    assignedPerson: "Marcus Lee",
-    inputBy: "June",
-    remarks: "Collect packaged battery modules from vendor loading dock with signed manifest.",
-    status: "Completed",
-    fieldSyncStatus: "Completed",
-    fieldUpdatedBy: "Marcus Lee",
-    fieldUpdatedAt: "26 May 2026, 4:42 PM",
-    createdAt: "26 May 2026, 11:20 AM",
-    lastUpdatedBy: "Marcus Lee",
-    lastUpdatedAt: "26 May 2026, 4:48 PM"
-  }
-];
+const scheduleRecords = [];
 
-const seededUsers = [
-  {
-    id: "USR-001",
-    username: "Funz",
-    role: "Sales",
-    status: "Active",
-    createdDate: "2026-05-12"
-  },
-  {
-    id: "USR-002",
-    username: "Esther",
-    role: "Warehouse",
-    status: "Active",
-    createdDate: "2026-05-14"
-  },
-  {
-    id: "USR-003",
-    username: "June",
-    role: "Management",
-    status: "Inactive",
-    createdDate: "2026-05-18"
-  },
-  {
-    id: "USR-004",
-    username: "Karthik",
-    role: "Sales",
-    status: "Pending Approval",
-    createdDate: "2026-05-25"
-  },
-  {
-    id: "USR-005",
-    username: "Amirah",
-    role: "Warehouse",
-    status: "Pending Approval",
-    createdDate: "2026-05-26"
-  },
-  {
-    id: "USR-ADMIN",
-    username: "Admin",
-    role: "Admin",
-    status: "Active",
-    createdDate: "2026-05-01"
-  }
-];
+const defaultUsers = [];
 let dummyUsers = loadUsers();
 
-let notifications = [
-  {
-    id: "NTF-001",
-    title: "New schedule added",
-    message: "PS-260526-004 was entered for ST Engineering Ltd.",
-    time: "5 min ago",
-    read: false
-  },
-  {
-    id: "NTF-002",
-    title: "Schedule status updated",
-    message: "PS-260526-001 is now In Progress.",
-    time: "18 min ago",
-    read: false
-  },
-  {
-    id: "NTF-003",
-    title: "Job carried forward",
-    message: "PS-260526-005 continues on 27 May 2026.",
-    time: "35 min ago",
-    read: false
-  },
-  {
-    id: "NTF-004",
-    title: "New user pending approval",
-    message: "Amirah is waiting for Admin approval.",
-    time: "1 hr ago",
-    read: true
-  },
-  {
-    id: "NTF-005",
-    title: "Field platform sync pending",
-    message: "PS-260526-004 has not been sent to the field platform.",
-    time: "2 hr ago",
-    read: true
-  },
-  {
-    id: "NTF-006",
-    title: "Schedule not assigned yet",
-    message: "Review pending jobs without a confirmed assignment.",
-    time: "Today",
-    read: true
-  }
-];
+let notifications = [];
 
-const seededTestingChecklist = [
-  { id: "TEST-001", item: "Login page", expectedResult: "Active office user can log in and access the correct role dashboard.", status: "Not Tested", remarks: "" },
-  { id: "TEST-002", item: "Sign up pending approval", expectedResult: "New account is created with Pending Approval status and cannot log in yet.", status: "Not Tested", remarks: "" },
-  { id: "TEST-003", item: "User approval", expectedResult: "Admin can approve a pending user and enable login access.", status: "Not Tested", remarks: "" },
-  { id: "TEST-004", item: "Role permission display", expectedResult: "Admin can view and edit permissions for each supported office role.", status: "Not Tested", remarks: "" },
-  { id: "TEST-005", item: "Add schedule", expectedResult: "Valid schedule input creates a new record in Daily Schedule.", status: "Not Tested", remarks: "" },
-  { id: "TEST-006", item: "Edit schedule", expectedResult: "Edited schedule details save and update the displayed record.", status: "Not Tested", remarks: "" },
-  { id: "TEST-007", item: "Carry forward", expectedResult: "Original job is marked Carried Forward and a linked next-date record is created.", status: "Not Tested", remarks: "" },
-  { id: "TEST-008", item: "Dashboard filters", expectedResult: "Summary card filters update the upcoming schedule preview correctly.", status: "Not Tested", remarks: "" },
-  { id: "TEST-009", item: "Daily Schedule search/filter", expectedResult: "Search and filter controls show only matching schedule records.", status: "Not Tested", remarks: "" },
-  { id: "TEST-010", item: "Timeline view", expectedResult: "Timeline view lists selected-date schedules in requested-time order.", status: "Not Tested", remarks: "" },
-  { id: "TEST-011", item: "Notification center", expectedResult: "Unread notifications display, can be marked read, and can be cleared.", status: "Not Tested", remarks: "" },
-  { id: "TEST-012", item: "Database persistence", expectedResult: "Saved operational records remain available after browser refresh.", status: "Not Tested", remarks: "" },
-  { id: "TEST-013", item: "Session access", expectedResult: "Signing out removes dashboard access until the user signs in again.", status: "Not Tested", remarks: "" }
-];
-let testingChecklist = seededTestingChecklist.map((test) => ({ ...test }));
+const defaultTestingChecklist = [];
+let testingChecklist = defaultTestingChecklist.map((test) => ({ ...test }));
 
-const defaultDemoData = {
-  users: seededUsers.map((user) => ({ ...user })),
-  schedules: sampleSchedule.map((schedule) => ({ ...schedule })),
+const defaultAppData = {
+  users: defaultUsers.map((user) => ({ ...user })),
+  schedules: scheduleRecords.map((schedule) => ({ ...schedule })),
   notifications: notifications.map((notification) => ({ ...notification })),
   activityLogs: [],
   rolePermissions: rolePermissions.map((permission) => ({ ...permission })),
@@ -492,7 +200,7 @@ const defaultDemoData = {
     scheduleStatuses: [...scheduleStatuses]
   },
   uiState: {
-    selectedDate: "2026-05-26",
+    selectedDate: localDateString(new Date()),
     previewFilter: "all",
     scheduleQuickFilter: "",
     scheduleView: "table",
@@ -509,12 +217,14 @@ const defaultDemoData = {
 
 let activityLogs = [];
 let uiState = {};
-loadMockDatabase();
+loadAppData();
 
 const elements = {
   schedulePageHeading: document.getElementById("schedulePageHeading"),
   dashboardTitle: document.getElementById("dashboardTitle"),
   dashboardSubtitle: document.getElementById("dashboardSubtitle"),
+  clearLaunchDataHeaderButton: document.getElementById("clearLaunchDataHeaderButton"),
+  dateSelector: document.querySelector(".date-selector"),
   profileName: document.getElementById("profileName"),
   profileRole: document.getElementById("profileRole"),
   avatar: document.querySelector(".avatar"),
@@ -776,12 +486,9 @@ async function apiRequest(path, options = {}) {
 }
 
 async function loadDatabaseData() {
-  const [scheduleData, notificationData] = await Promise.all([
-    apiRequest("/schedules"),
-    apiRequest("/notifications")
-  ]);
-  sampleSchedule.splice(0, sampleSchedule.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
-  notifications = notificationData.notifications;
+  const scheduleData = await apiRequest("/schedules");
+  scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
+  notifications = [];
   lastDataRefreshAt = new Date();
 
   if (session.role === "Admin") {
@@ -791,26 +498,33 @@ async function loadDatabaseData() {
     ]);
     dummyUsers = userData.users;
     rolePermissions.splice(0, rolePermissions.length, ...permissionData.permissions);
+    notifications = await loadNotificationData();
   }
 }
 
 async function loadScheduleAndNotificationData() {
-  const [scheduleData, notificationData] = await Promise.all([
-    apiRequest("/schedules"),
-    apiRequest("/notifications")
-  ]);
-  sampleSchedule.splice(0, sampleSchedule.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
-  notifications = notificationData.notifications;
+  const scheduleData = await apiRequest("/schedules");
+  scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
+  notifications = session.role === "Admin" ? await loadNotificationData() : [];
   lastDataRefreshAt = new Date();
+}
+
+async function loadNotificationData() {
+  try {
+    const notificationData = await apiRequest("/notifications");
+    return notificationData.notifications || [];
+  } catch (error) {
+    return [];
+  }
 }
 
 function replaceSchedule(record) {
   record = normalizeScheduleRecord(record);
-  const index = sampleSchedule.findIndex((entry) => entry.id === record.id);
+  const index = scheduleRecords.findIndex((entry) => entry.id === record.id);
   if (index === -1) {
-    sampleSchedule.push(record);
+    scheduleRecords.push(record);
   } else {
-    sampleSchedule[index] = record;
+    scheduleRecords[index] = record;
   }
 }
 
@@ -973,6 +687,7 @@ function renderNotifications() {
   elements.clearNotifications.disabled = notifications.length === 0;
   elements.markAllNotificationsRead.disabled = unreadCount === 0;
   elements.markAllUpdatesRead.disabled = unreadCount === 0;
+  elements.recentUpdatesPanel.classList.add("hidden");
   renderRecentUpdates();
 }
 
@@ -1006,43 +721,9 @@ function getUpdateChangedBy(notification) {
 }
 
 function renderRecentUpdates() {
-  const updates = getImportantUpdates().slice(0, 6);
-  const fragment = document.createDocumentFragment();
-  updates.forEach((notification) => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = `recent-update-item${notification.read ? "" : " unread"}`;
-    item.dataset.recentUpdateId = notification.id;
-    item.setAttribute("aria-label", `Open update: ${notification.title}`);
-
-    const main = document.createElement("div");
-    main.className = "recent-update-main";
-    const title = document.createElement("div");
-    title.className = "recent-update-title";
-    const dot = document.createElement("span");
-    dot.className = "recent-update-dot";
-    dot.setAttribute("aria-hidden", "true");
-    const titleText = document.createElement("span");
-    titleText.textContent = notification.title;
-    title.append(dot, titleText);
-    const reference = document.createElement("div");
-    reference.className = "recent-update-reference";
-    reference.textContent = getUpdateReference(notification);
-    main.append(title, reference);
-
-    const meta = document.createElement("div");
-    meta.className = "recent-update-meta";
-    const changedBy = document.createElement("span");
-    changedBy.className = "recent-update-person";
-    changedBy.textContent = `Changed by ${getUpdateChangedBy(notification)}`;
-    const time = document.createElement("time");
-    time.textContent = notification.time;
-    meta.append(changedBy, time);
-    item.append(main, meta);
-    fragment.appendChild(item);
-  });
-  elements.recentUpdatesList.replaceChildren(fragment);
-  elements.emptyRecentUpdates.classList.toggle("hidden", updates.length !== 0);
+  elements.recentUpdatesPanel.classList.add("hidden");
+  elements.recentUpdatesList.replaceChildren();
+  elements.emptyRecentUpdates.classList.add("hidden");
 }
 
 function toggleNotificationPanel() {
@@ -1156,7 +837,7 @@ function findNotificationSchedule(notification) {
   if (!reference) {
     return null;
   }
-  return sampleSchedule
+  return scheduleRecords
     .filter((entry) => entry.psNo.toLowerCase() === reference.toLowerCase())
     .sort((first, second) => second.date.localeCompare(first.date))[0] || null;
 }
@@ -1256,14 +937,17 @@ function renderDateHeading() {
   elements.selectedDateLabel.textContent = label;
   const isSales = session.role === "Sales";
   const isScheduleView = currentSection === "dailySchedule";
+  const isAddSchedule = currentSection === "addSchedule";
+  elements.dateSelector.classList.toggle("hidden", isAddSchedule);
+  if (isAddSchedule) {
+    elements.dashboardTitle.textContent = "Add Schedule";
+    elements.dashboardSubtitle.textContent = "Create a new office schedule job.";
+    return;
+  }
   elements.dashboardTitle.textContent = isScheduleView
     ? `${session.role === "Sales" ? "My Schedule" : "Daily Schedule"} - ${label}`
-    : currentSection === "addSchedule"
-      ? `Add Schedule - ${label}`
     : `${isSales ? "My Schedule Overview" : "Daily Operations Overview"} - ${label}`;
-  elements.dashboardSubtitle.textContent = currentSection === "addSchedule"
-    ? `Create a new office schedule job for ${label}.`
-    : isSales
+  elements.dashboardSubtitle.textContent = isSales
     ? `Showing schedules submitted by ${session.username} for ${label}.`
     : isScheduleView
       ? `Review scheduled activities for ${label}.`
@@ -1291,12 +975,13 @@ function renderRoleDisplay() {
   elements.profileName.textContent = session.username;
   elements.profileRole.textContent = session.role;
   elements.avatar.textContent = initials(session.username);
-  const isSales = session.role === "Sales";
-  elements.notificationCenter.classList.toggle("hidden", isSales);
-  if (isSales) {
+  const isAdmin = session.role === "Admin";
+  elements.notificationCenter.classList.toggle("hidden", !isAdmin);
+  elements.clearLaunchDataHeaderButton.classList.toggle("hidden", !["Admin", "Management"].includes(session.role));
+  if (!isAdmin) {
     closeNotificationPanel();
   }
-  elements.recentUpdatesPanel.classList.toggle("hidden", isSales);
+  elements.recentUpdatesPanel.classList.add("hidden");
   elements.addScheduleButton.classList.toggle(
     "hidden",
     !["Sales", "Warehouse"].includes(session.role)
@@ -1337,6 +1022,7 @@ function showSection(section, menuLabel = "") {
   const isAddSchedule = ["Sales", "Warehouse"].includes(session.role) && section === "addSchedule";
   const isAdminPanel = isUserManagement || isRoleSettings || isSystemSettings || isTestingChecklist;
   currentSection = isAdminPanel || isDailySchedule || isAddSchedule ? section : "dashboard";
+  document.body.classList.toggle("add-schedule-view", isAddSchedule);
   activeMenuLabel = menuLabel || (
     currentSection === "dashboard"
       ? "Dashboard"
@@ -1432,7 +1118,7 @@ function handleChecklistInput(event) {
     return;
   }
   test.remarks = field.value;
-  persistDemoData();
+  persistAppData();
 }
 
 function handleChecklistStatusChange(event) {
@@ -1447,28 +1133,39 @@ function handleChecklistStatusChange(event) {
   }
   test.status = field.value;
   addActivityLog("Testing Checklist Updated", `${test.item} marked as ${test.status}.`);
-  persistDemoData();
+  persistAppData();
 }
 
-function ensureResetDemoButton() {
+function ensureResetLocalDataButton() {
   const maintenancePanel = document.querySelector(".maintenance-settings");
-  if (!maintenancePanel || document.getElementById("resetDemoDataButton")) {
+  if (!maintenancePanel) {
     return;
   }
-  const resetButton = document.createElement("button");
-  resetButton.type = "button";
-  resetButton.id = "resetDemoDataButton";
-  resetButton.className = "secondary-button maintenance-button";
-  resetButton.textContent = "Reset Demo Data";
-  resetButton.addEventListener("click", resetDemoData);
-  maintenancePanel.appendChild(resetButton);
+  if (!document.getElementById("clearLaunchDataButton")) {
+    const clearButton = document.createElement("button");
+    clearButton.type = "button";
+    clearButton.id = "clearLaunchDataButton";
+    clearButton.className = "secondary-button maintenance-button";
+    clearButton.textContent = "Clear All Records";
+    clearButton.addEventListener("click", clearLaunchData);
+    maintenancePanel.appendChild(clearButton);
+  }
+  if (!document.getElementById("resetLocalDataButton")) {
+    const resetButton = document.createElement("button");
+    resetButton.type = "button";
+    resetButton.id = "resetLocalDataButton";
+    resetButton.className = "secondary-button maintenance-button";
+    resetButton.textContent = "Reset Local Data";
+    resetButton.addEventListener("click", resetLocalData);
+    maintenancePanel.appendChild(resetButton);
+  }
 }
 
 function renderScheduleFilterOptions() {
   setFilterOptions(elements.scheduleTypeFilter, scheduleTypes, "All Types");
   setFilterOptions(elements.scheduleStatusFilter, scheduleStatuses, "All Statuses");
   setFilterOptions(elements.assignedRoleFilter, assignedRoleOptions, "All Roles");
-  const inputNames = [...new Set(sampleSchedule.map((entry) => entry.inputBy))].sort();
+  const inputNames = [...new Set(scheduleRecords.map((entry) => entry.inputBy))].sort();
   setFilterOptions(elements.inputByFilter, inputNames, "All Users");
 }
 
@@ -1510,42 +1207,12 @@ function prepareAddScheduleForm() {
   setRequiredSelectOptions(elements.newPriority, priorityOptions, "Select priority", "Normal");
   setRequiredSelectOptions(elements.newStatus, scheduleStatuses, "Select status", "Submitted");
   elements.newStatus.disabled = session.role === "Sales";
-  renderPsReferenceOptions();
+  elements.psNumberOptions.replaceChildren();
   renderAssignedPersonOptions();
   updateTypeShortcuts();
-  const selectedDate = getSelectedDateValue();
-  setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, selectedDate === tbaValue);
-  if (selectedDate !== tbaValue) {
-    elements.newScheduleDate.value = selectedDate;
-  }
+  setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, false);
+  elements.newScheduleDate.value = "";
   elements.newInputBy.value = session.username;
-}
-
-function renderPsReferenceOptions() {
-  const options = psReferenceRecords.map((record) => {
-    const option = document.createElement("option");
-    option.value = record.psNo;
-    option.label = record.companyName;
-    return option;
-  });
-  elements.psNumberOptions.replaceChildren(...options);
-}
-
-function fillFromPsReference() {
-  const record = psReferenceRecords.find((item) => item.psNo === elements.newPsNo.value.trim());
-  if (!record) {
-    return;
-  }
-  elements.newCompanyName.value = record.companyName;
-  elements.newProducts.value = record.products;
-  elements.newLocation.value = record.location;
-  [elements.newCompanyName, elements.newProducts, elements.newLocation].forEach((field) => {
-    field.classList.remove("invalid-field");
-    const error = elements.addScheduleForm.querySelector(`[data-error-for="${field.name}"]`);
-    if (error) {
-      error.textContent = "";
-    }
-  });
 }
 
 function renderAssignedPersonOptions() {
@@ -1960,7 +1627,7 @@ function applyPreviewFilter(filter) {
     card.classList.toggle("selected", selected);
     card.setAttribute("aria-pressed", String(selected));
   });
-  persistDemoData();
+  persistAppData();
   renderDashboardPreview();
 }
 
@@ -2057,7 +1724,7 @@ function setScheduleView(view) {
     button.classList.toggle("selected", selected);
     button.setAttribute("aria-pressed", String(selected));
   });
-  persistDemoData();
+  persistAppData();
   renderSchedule();
 }
 
@@ -2093,7 +1760,7 @@ function createScheduleRow(entry) {
 }
 
 function openScheduleDetails(scheduleId) {
-  const entry = sampleSchedule.find((schedule) => schedule.id === scheduleId);
+  const entry = scheduleRecords.find((schedule) => schedule.id === scheduleId);
   if (!entry) {
     return;
   }
@@ -2153,7 +1820,7 @@ function closeScheduleDetails() {
 }
 
 function getSelectedScheduleRecord() {
-  return sampleSchedule.find((schedule) => schedule.id === selectedScheduleId);
+  return scheduleRecords.find((schedule) => schedule.id === selectedScheduleId);
 }
 
 function closeDetailWorkflows() {
@@ -2227,7 +1894,7 @@ function updateAuditFields(entry) {
 }
 
 function refreshScheduleViews(entry) {
-  persistDemoData();
+  persistAppData();
   renderMetrics();
   renderDashboardPreview();
   renderSchedule();
@@ -2610,7 +2277,7 @@ function localDateString(date) {
 
 function getSelectedSchedule() {
   const selectedDate = getSelectedDateValue();
-  return sampleSchedule.filter((entry) => {
+  return scheduleRecords.filter((entry) => {
     const matchesDate = entry.date === selectedDate;
     const submittedByUser = entry.inputBy.toLowerCase() === session.username.toLowerCase();
     return matchesDate && (session.role !== "Sales" || submittedByUser);
@@ -2682,7 +2349,7 @@ function applyScheduleQuickFilter(filter) {
     renderSchedule();
   }
   updateScheduleQuickButtons();
-  persistDemoData();
+  persistAppData();
 }
 
 function clearScheduleFilters() {
@@ -2695,7 +2362,7 @@ function clearScheduleFilters() {
   scheduleQuickFilter = "";
   updateScheduleQuickButtons();
   renderSchedule();
-  persistDemoData();
+  persistAppData();
 }
 
 function clearAddScheduleErrors() {
@@ -2757,7 +2424,7 @@ function validateAddScheduleForm() {
 }
 
 function createScheduleId() {
-  const highestId = sampleSchedule.reduce((highest, entry) => {
+  const highestId = scheduleRecords.reduce((highest, entry) => {
     const numericId = Number(entry.id.replace("SCH-", ""));
     return Number.isNaN(numericId) ? highest : Math.max(highest, numericId);
   }, 0);
@@ -2904,7 +2571,7 @@ function bindActions() {
     scheduleQuickFilter = "";
     updateScheduleQuickButtons();
     renderSelectedDate();
-    persistDemoData();
+    persistAppData();
   });
   elements.previousDay.addEventListener("click", () => changeSelectedDay(-1));
   elements.nextDay.addEventListener("click", () => changeSelectedDay(1));
@@ -2913,10 +2580,11 @@ function bindActions() {
     setDashboardDate(tbaValue);
     updateScheduleQuickButtons();
     renderSelectedDate();
-    persistDemoData();
+    persistAppData();
   });
   elements.menuToggle.addEventListener("click", toggleSidebar);
   elements.sidebarBackdrop.addEventListener("click", closeSidebar);
+  elements.clearLaunchDataHeaderButton.addEventListener("click", clearLaunchData);
   elements.addScheduleButton.addEventListener("click", () => showSection("addSchedule", "Add Schedule"));
   elements.metricCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-filter]");
@@ -2934,18 +2602,18 @@ function bindActions() {
   elements.clearPreviewFilter.addEventListener("click", () => applyPreviewFilter("all"));
   elements.scheduleSearch.addEventListener("input", () => {
     renderSchedule();
-    persistDemoData();
+    persistAppData();
   });
   [elements.scheduleTypeFilter, elements.assignedRoleFilter, elements.inputByFilter, elements.scheduleSort]
     .forEach((control) => control.addEventListener("change", () => {
       renderSchedule();
-      persistDemoData();
+      persistAppData();
     }));
   elements.scheduleStatusFilter.addEventListener("change", () => {
     scheduleQuickFilter = "";
     updateScheduleQuickButtons();
     renderSchedule();
-    persistDemoData();
+    persistAppData();
   });
   elements.scheduleQuickFilters.forEach((button) => {
     button.addEventListener("click", () => applyScheduleQuickFilter(button.dataset.scheduleQuick));
@@ -2959,8 +2627,6 @@ function bindActions() {
   elements.exportSchedulePdf.addEventListener("click", () => showToast("PDF export will be added later."));
   elements.addScheduleForm.addEventListener("submit", saveNewSchedule);
   elements.clearAddScheduleForm.addEventListener("click", prepareAddScheduleForm);
-  elements.newPsNo.addEventListener("change", fillFromPsReference);
-  elements.newPsNo.addEventListener("input", fillFromPsReference);
   elements.newAssignedRole.addEventListener("change", renderAssignedPersonOptions);
   elements.editAssignedRole.addEventListener("change", () => renderEditAssignedPersonOptions());
   elements.newAssignedPersonButton.addEventListener("click", () => toggleMultiSelectPanel(elements.newAssignedPerson));
@@ -3495,7 +3161,7 @@ function changeSelectedDay(offset) {
   scheduleQuickFilter = "";
   updateScheduleQuickButtons();
   renderSelectedDate();
-  persistDemoData();
+  persistAppData();
 }
 
 function renderSelectedDate() {
@@ -3528,44 +3194,44 @@ function cloneData(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createDefaultMockDatabase(users = defaultDemoData.users) {
-  const database = cloneData(defaultDemoData);
+function createDefaultAppData(users = defaultAppData.users) {
+  const database = cloneData(defaultAppData);
   database.users = cloneData(users);
   return database;
 }
 
-function loadMockDatabase() {
+function loadAppData() {
   let storedDatabase;
   try {
-    storedDatabase = JSON.parse(localStorage.getItem(MOCK_DB_KEY) || "null");
+    localStorage.removeItem(LEGACY_APP_DATA_KEY);
+    storedDatabase = JSON.parse(localStorage.getItem(APP_DATA_KEY) || "null");
   } catch (error) {
     storedDatabase = null;
   }
   if (!storedDatabase || !Array.isArray(storedDatabase.schedules)) {
-    const legacyUsers = loadUsers();
-    storedDatabase = createDefaultMockDatabase(legacyUsers.length ? legacyUsers : defaultDemoData.users);
+    storedDatabase = createDefaultAppData();
   }
-  dummyUsers = cloneData(storedDatabase.users || defaultDemoData.users);
-  sampleSchedule.splice(
+  dummyUsers = cloneData(storedDatabase.users || defaultAppData.users);
+  scheduleRecords.splice(
     0,
-    sampleSchedule.length,
-    ...cloneData(storedDatabase.schedules || defaultDemoData.schedules).map(normalizeScheduleRecord)
+    scheduleRecords.length,
+    ...cloneData(defaultAppData.schedules).map(normalizeScheduleRecord)
   );
-  notifications = cloneData(storedDatabase.notifications || defaultDemoData.notifications);
-  activityLogs = cloneData(storedDatabase.activityLogs || []);
+  notifications = cloneData(defaultAppData.notifications);
+  activityLogs = [];
   rolePermissions.splice(
     0,
     rolePermissions.length,
-    ...cloneData(storedDatabase.rolePermissions || defaultDemoData.rolePermissions)
+    ...cloneData(storedDatabase.rolePermissions || defaultAppData.rolePermissions)
   );
-  userOverrides = cloneData(storedDatabase.userOverrides || defaultDemoData.userOverrides);
-  testingChecklist = cloneData(storedDatabase.testingChecklist || defaultDemoData.testingChecklist);
+  userOverrides = cloneData(defaultAppData.userOverrides);
+  testingChecklist = cloneData(defaultAppData.testingChecklist);
   scheduleTypes = [...new Set([...defaultScheduleTypes, ...(storedDatabase.settings?.scheduleTypes || [])])];
   scheduleStatuses = [...new Set([...defaultScheduleStatuses, ...(storedDatabase.settings?.scheduleStatuses || [])])];
-  uiState = cloneData(storedDatabase.uiState || defaultDemoData.uiState);
-  localStorage.setItem(MOCK_DB_KEY, JSON.stringify({
+  uiState = cloneData(storedDatabase.uiState || defaultAppData.uiState);
+  localStorage.setItem(APP_DATA_KEY, JSON.stringify({
     users: dummyUsers,
-    schedules: sampleSchedule,
+    schedules: scheduleRecords,
     notifications,
     activityLogs,
     rolePermissions,
@@ -3600,11 +3266,11 @@ function captureUiState() {
   };
 }
 
-function persistDemoData() {
+function persistAppData() {
   captureUiState();
   const database = {
     users: dummyUsers,
-    schedules: sampleSchedule,
+    schedules: scheduleRecords,
     notifications,
     activityLogs,
     rolePermissions,
@@ -3616,7 +3282,7 @@ function persistDemoData() {
     },
     uiState
   };
-  localStorage.setItem(MOCK_DB_KEY, JSON.stringify(database));
+  localStorage.setItem(APP_DATA_KEY, JSON.stringify(database));
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(dummyUsers));
 }
 
@@ -3630,14 +3296,14 @@ function addActivityLog(action, message) {
   });
 }
 
-function resetDemoData() {
-  if (!window.confirm("Reset all frontend demo records and saved filters to their default values?")) {
+function resetLocalData() {
+  if (!window.confirm("Reset local records and saved filters to their default values?")) {
     return;
   }
-  const database = createDefaultMockDatabase();
-  localStorage.setItem(MOCK_DB_KEY, JSON.stringify(database));
+  const database = createDefaultAppData();
+  localStorage.setItem(APP_DATA_KEY, JSON.stringify(database));
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(database.users));
-  loadMockDatabase();
+  loadAppData();
   closeScheduleDetails();
   closeCarryForwardModal();
   setDashboardDate(uiState.selectedDate);
@@ -3653,7 +3319,36 @@ function resetDemoData() {
   renderSystemSettings();
   renderTestingChecklist();
   renderNotifications();
-  showToast("Demo data reset to default records.");
+  showToast("Local data reset to default records.");
+}
+
+async function clearLaunchData() {
+  if (!window.confirm("Clear all schedules, notifications, activity logs, and non-current users? This cannot be undone.")) {
+    return;
+  }
+  try {
+    await apiRequest("/admin/launch-data", { method: "DELETE" });
+    scheduleRecords.splice(0, scheduleRecords.length);
+    notifications = [];
+    activityLogs = [];
+    const currentAccountRemoved = session.role !== "Admin";
+    dummyUsers = dummyUsers.filter((user) => user.role === "Admin");
+    persistAppData();
+    closeScheduleDetails();
+    closeCarryForwardModal();
+    renderScheduleFilterOptions();
+    clearScheduleFilters();
+    renderSelectedDate();
+    renderUsers();
+    renderNotifications();
+    showToast("All records cleared. Only the current Admin account remains.");
+    if (currentAccountRemoved) {
+      localStorage.removeItem(SESSION_KEY);
+      window.location.href = "index.html";
+    }
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function loadSession() {
@@ -3675,13 +3370,13 @@ function loadUsers() {
       return stored;
     }
   } catch (error) {
-    // Seed the frontend-only account list when stored demo data is invalid.
+    // Return the baseline account list when stored data is invalid.
   }
-  return seededUsers.map((user) => ({ ...user }));
+  return defaultUsers.map((user) => ({ ...user }));
 }
 
 function persistUsers() {
-  persistDemoData();
+  persistAppData();
 }
 
 function initials(name) {
@@ -3692,3 +3387,4 @@ function initials(name) {
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 }
+

@@ -1,8 +1,6 @@
 "use strict";
 
 const SESSION_KEY = "datacomDailySchedule.session";
-const USER_STORAGE_KEY = "datacomDailySchedule.users";
-const MOCK_DB_KEY = "datacomDailySchedule.mockDatabase";
 const DELETED_USERNAMES_KEY = "datacomDailySchedule.deletedUsernames";
 const API_BASE_URL = window.DATACOM_API_BASE_URL || "https://desktop-19n0dfj.taildafd1a.ts.net:8444/api";
 
@@ -130,10 +128,6 @@ async function handleSignup(event) {
     return;
   }
   const username = elements.signupUsername.value.trim();
-  if (findRetainedFrontendUser(username)) {
-    setError(elements.signupUsername, elements.signupUsernameError, "This username already exists.");
-    return;
-  }
   try {
     await apiRequest("/auth/signup", {
       method: "POST",
@@ -148,23 +142,7 @@ async function handleSignup(event) {
     showLoginForm(false);
     showMessage("Account created. Your account is pending Admin approval before login.", true);
   } catch (error) {
-    const message = wasDeletedInFrontend(username) && error.message === "This username already exists."
-      ? "This user was deleted locally. Database username reuse requires the later backend delete update."
-      : error.message;
-    setError(elements.signupUsername, elements.signupUsernameError, message);
-  }
-}
-
-function loadFrontendUsers() {
-  try {
-    const storedDatabase = JSON.parse(localStorage.getItem(MOCK_DB_KEY) || "null");
-    if (storedDatabase && Array.isArray(storedDatabase.users)) {
-      return storedDatabase.users;
-    }
-    const users = JSON.parse(localStorage.getItem(USER_STORAGE_KEY) || "[]");
-    return Array.isArray(users) ? users : [];
-  } catch (error) {
-    return [];
+    setError(elements.signupUsername, elements.signupUsernameError, error.message);
   }
 }
 
@@ -175,18 +153,6 @@ function loadDeletedUsernames() {
   } catch (error) {
     return [];
   }
-}
-
-function wasDeletedInFrontend(username) {
-  return loadDeletedUsernames().includes(username.toLowerCase());
-}
-
-function findRetainedFrontendUser(username) {
-  const normalizedName = username.toLowerCase();
-  if (wasDeletedInFrontend(username)) {
-    return null;
-  }
-  return loadFrontendUsers().find((user) => user.username.toLowerCase() === normalizedName);
 }
 
 function forgetDeletedUsername(username) {
@@ -268,3 +234,4 @@ function clearMessage() {
   elements.formMessage.textContent = "";
   elements.formMessage.classList.remove("visible", "info");
 }
+

@@ -507,6 +507,10 @@ button {
   background: var(--white);
 }
 
+body.add-schedule-view .date-selector {
+  display: none;
+}
+
 .selector-label {
   display: block;
   margin-bottom: 5px;

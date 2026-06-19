@@ -75,9 +75,10 @@
       <section class="page-heading" id="schedulePageHeading">
         <div>
           <p class="eyebrow">Dashboard</p>
-          <h1 id="dashboardTitle">Daily Operations Overview</h1>
-          <p class="subtitle" id="dashboardSubtitle">Monitor scheduled work and manage activity at a glance.</p>
+          <h1 id="dashboardTitle">Dashboard</h1>
+          <p class="subtitle" id="dashboardSubtitle">Monitor scheduled work and manage activity.</p>
         </div>
+        <button class="secondary-button hidden" id="clearLaunchDataHeaderButton" type="button">Clear All Records</button>
         <div class="date-selector">
           <span class="selector-label">Schedule Date</span>
           <strong id="selectedDateLabel"></strong>
@@ -240,10 +241,10 @@
             <div>
               <p class="eyebrow">Schedule Entry</p>
               <h2>Add Schedule</h2>
-              <p class="panel-description">Create a new operational job for the selected schedule date.</p>
+              <p class="panel-description">Create a new operational job.</p>
             </div>
           </div>
-          <form class="add-schedule-form" id="addScheduleForm" novalidate>
+          <form class="add-schedule-form" id="addScheduleForm" autocomplete="off" novalidate>
             <p class="form-error-summary hidden" id="addScheduleErrorSummary" role="alert">Please complete the required fields below.</p>
             <label>
               Schedule Date <span class="required-mark">*</span>
@@ -280,34 +281,34 @@
             </div>
             <label>
               Reference Number (PS/PR/PO) <span class="required-mark">*</span>
-              <input id="newPsNo" name="psNo" type="text" list="psNumberOptions" placeholder="Search or enter reference number" autocomplete="off" required>
+              <input id="newPsNo" name="psNo" type="text" placeholder="Enter reference number" autocomplete="new-password" required>
               <datalist id="psNumberOptions"></datalist>
-              <small class="field-help">Select a mock reference record to auto fill company, products and location.</small>
+              <small class="field-help">Enter the PS, PR, or PO reference number.</small>
               <small class="field-error" data-error-for="psNo"></small>
             </label>
             <label>
               Company Name <span class="required-mark">*</span>
-              <input id="newCompanyName" name="companyName" type="text" required>
+              <input id="newCompanyName" name="companyName" type="text" autocomplete="new-password" required>
               <small class="field-error" data-error-for="companyName"></small>
             </label>
             <label>
               PIC <span class="required-mark">*</span>
-              <input id="newPic" name="pic" type="text" required>
+              <input id="newPic" name="pic" type="text" autocomplete="new-password" required>
               <small class="field-error" data-error-for="pic"></small>
             </label>
             <label>
               Contact Number <span class="required-mark">*</span>
-              <input id="newContactNumber" name="contactNumber" type="tel" required>
+              <input id="newContactNumber" name="contactNumber" type="tel" autocomplete="new-password" required>
               <small class="field-error" data-error-for="contactNumber"></small>
             </label>
             <label>
               Location <span class="required-mark">*</span>
-              <input id="newLocation" name="location" type="text" required>
+              <input id="newLocation" name="location" type="text" autocomplete="new-password" required>
               <small class="field-error" data-error-for="location"></small>
             </label>
             <label class="form-wide">
               Products / Items <span class="required-mark">*</span>
-              <textarea id="newProducts" name="products" rows="3" required></textarea>
+              <textarea id="newProducts" name="products" rows="3" autocomplete="off" required></textarea>
               <small class="field-error" data-error-for="products"></small>
             </label>
             <label>
@@ -650,7 +651,7 @@
           <div>
             <p class="eyebrow">Administration</p>
             <h1>Testing Checklist</h1>
-            <p class="subtitle">Record frontend verification results before demo review or operational handover.</p>
+            <p class="subtitle">Record verification results before operational handover.</p>
           </div>
         </div>
 
