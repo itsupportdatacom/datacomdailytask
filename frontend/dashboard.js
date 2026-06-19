@@ -160,7 +160,7 @@ const referenceNumberPattern = /\b(?:PS|PR|PO)-[A-Z0-9-]+\b/i;
 let scheduleTypes = [...defaultScheduleTypes];
 let scheduleStatuses = [...defaultScheduleStatuses];
 const assignedRoleOptions = ["Driver", "Technician", "Engineer", "All Team"];
-const assignedPersonOptions = ["Liang", "Chojen", "Karthik", "Bala", "Devi", "June"];
+const assignedPersonOptions = ["Liang", "Chojen", "Karthik", "Bala", "Devi", "Funz", "Ivor"];
 const priorityOptions = ["Normal", "Urgent", "Critical"];
 const onsiteServiceTypes = [
   "Engineer Onsite",
@@ -519,12 +519,14 @@ const elements = {
   profileRole: document.getElementById("profileRole"),
   avatar: document.querySelector(".avatar"),
   notificationButton: document.getElementById("notificationButton"),
+  notificationCenter: document.querySelector(".notification-center"),
   notificationCount: document.getElementById("notificationCount"),
   notificationPanel: document.getElementById("notificationPanel"),
   notificationList: document.getElementById("notificationList"),
   emptyNotifications: document.getElementById("emptyNotifications"),
   clearNotifications: document.getElementById("clearNotifications"),
   markAllNotificationsRead: document.getElementById("markAllNotificationsRead"),
+  recentUpdatesPanel: document.querySelector(".recent-updates-panel"),
   recentUpdatesList: document.getElementById("recentUpdatesList"),
   emptyRecentUpdates: document.getElementById("emptyRecentUpdates"),
   viewAllUpdates: document.getElementById("viewAllUpdates"),
@@ -1139,6 +1141,9 @@ async function markAllNotificationsRead() {
 }
 
 function showUnreadUpdatesToast() {
+  if (session.role === "Sales") {
+    return;
+  }
   const unreadImportantCount = getImportantUpdates().filter((notification) => !notification.read).length;
   if (unreadImportantCount > 0) {
     const updateLabel = unreadImportantCount === 1 ? "important update" : "important updates";
@@ -1286,6 +1291,12 @@ function renderRoleDisplay() {
   elements.profileName.textContent = session.username;
   elements.profileRole.textContent = session.role;
   elements.avatar.textContent = initials(session.username);
+  const isSales = session.role === "Sales";
+  elements.notificationCenter.classList.toggle("hidden", isSales);
+  if (isSales) {
+    closeNotificationPanel();
+  }
+  elements.recentUpdatesPanel.classList.toggle("hidden", isSales);
   elements.addScheduleButton.classList.toggle(
     "hidden",
     !["Sales", "Warehouse"].includes(session.role)
@@ -2712,7 +2723,6 @@ function getRequiredScheduleFields() {
     { element: elements.newPic, name: "pic", label: "PIC" },
     { element: elements.newContactNumber, name: "contactNumber", label: "Contact Number" },
     { element: elements.newAssignedRole, name: "assignedRole", label: "Assigned Role" },
-    { element: elements.newAssignedPerson, name: "assignedPerson", label: "Assigned Person" },
     { element: elements.newPriority, name: "priority", label: "Priority" },
     { element: elements.newInputBy, name: "inputBy", label: "Input By" },
     { element: elements.newStatus, name: "status", label: "Status" }
