@@ -25,8 +25,31 @@ async function ensureScheduleWorkflowSchema() {
       ALTER COLUMN assigned_role DROP NOT NULL,
       ALTER COLUMN assigned_person DROP NOT NULL
   `);
+  await pool.query("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS pic VARCHAR(150) NOT NULL DEFAULT '-'");
+  await pool.query("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS contact_number VARCHAR(80) NOT NULL DEFAULT '-'");
+  await pool.query("ALTER TABLE schedules ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'Normal'");
   await pool.query("ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_schedule_type_check");
+  await pool.query("ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_assigned_role_check");
+  await pool.query("ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_priority_check");
   await pool.query("ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_status_check");
+  await pool.query(`
+    UPDATE schedules
+       SET schedule_type = CASE schedule_type
+         WHEN 'Technical' THEN 'Technician Onsite'
+         WHEN 'Onsite' THEN 'Engineer Onsite'
+         WHEN 'Delivery + Onsite' THEN 'Delivery + Technician Onsite'
+         ELSE schedule_type
+       END
+  `);
+  await pool.query("UPDATE schedules SET assigned_role = 'All Team' WHERE assigned_role = 'Warehouse'");
+  await pool.query(`
+    UPDATE schedules
+       SET priority = CASE priority
+         WHEN 'Low' THEN 'Normal'
+         WHEN 'High' THEN 'Urgent'
+         ELSE priority
+       END
+  `);
   await pool.query("ALTER TABLE schedules ALTER COLUMN status SET DEFAULT 'Submitted'");
   await pool.query(`
     ALTER TABLE schedules
@@ -35,10 +58,34 @@ async function ensureScheduleWorkflowSchema() {
         'Delivery',
         'Customer Self-Collection',
         'Collection at Vendor Place',
-        'Technical',
-        'Onsite',
-        'Delivery + Onsite',
-        'Site Survey'
+        'Engineer Onsite',
+        'Technician Onsite',
+        'Engineer Remote',
+        'Delivery + Technician Onsite',
+        'Delivery + Engineer Onsite',
+        'Delivery + All Involved',
+        'Site Survey',
+        'Lazada Dropoff',
+        'Shopee Dropoff'
+      ))
+  `);
+  await pool.query(`
+    ALTER TABLE schedules
+      ADD CONSTRAINT schedules_assigned_role_check
+      CHECK (assigned_role IN (
+        'Driver',
+        'Technician',
+        'Engineer',
+        'All Team'
+      ))
+  `);
+  await pool.query(`
+    ALTER TABLE schedules
+      ADD CONSTRAINT schedules_priority_check
+      CHECK (priority IN (
+        'Normal',
+        'Urgent',
+        'Critical'
       ))
   `);
   await pool.query(`

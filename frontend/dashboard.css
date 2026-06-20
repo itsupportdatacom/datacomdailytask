@@ -888,6 +888,30 @@ body.add-schedule-view .date-selector {
   font-weight: 500;
 }
 
+.inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: #60778d;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-schedule-form .inline-checkbox input,
+.schedule-edit-form .inline-checkbox input {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.add-schedule-form input:disabled,
+.schedule-edit-form input:disabled {
+  color: #70869a;
+  background: #f3f7fb;
+  cursor: not-allowed;
+}
+
 .schedule-type-shortcuts {
   margin-top: -4px;
 }

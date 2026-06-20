@@ -21,23 +21,30 @@ CREATE TABLE schedules (
       'Delivery',
       'Customer Self-Collection',
       'Collection at Vendor Place',
-      'Technical',
-      'Onsite',
-      'Delivery + Onsite',
-      'Site Survey'
+      'Engineer Onsite',
+      'Technician Onsite',
+      'Engineer Remote',
+      'Delivery + Technician Onsite',
+      'Delivery + Engineer Onsite',
+      'Delivery + All Involved',
+      'Site Survey',
+      'Lazada Dropoff',
+      'Shopee Dropoff'
     )),
   ps_no VARCHAR(60) NOT NULL,
   company_name VARCHAR(255) NOT NULL,
   products_items TEXT NOT NULL,
   location TEXT NOT NULL,
+  pic VARCHAR(150) NOT NULL DEFAULT '-',
+  contact_number VARCHAR(80) NOT NULL DEFAULT '-',
   assigned_role VARCHAR(40)
-    CHECK (assigned_role IN ('Driver', 'Technician', 'Engineer', 'Warehouse')),
+    CHECK (assigned_role IN ('Driver', 'Technician', 'Engineer', 'All Team')),
   assigned_person VARCHAR(150),
   input_by BIGINT NOT NULL REFERENCES users(id),
   status VARCHAR(40) NOT NULL DEFAULT 'Submitted'
     CHECK (status IN ('Submitted', 'Pending', 'Ready to Ship', 'In Progress', 'Completed', 'Carried Forward', 'Cancelled')),
   priority VARCHAR(20) NOT NULL DEFAULT 'Normal'
-    CHECK (priority IN ('Low', 'Normal', 'High', 'Urgent')),
+    CHECK (priority IN ('Normal', 'Urgent', 'Critical')),
   remarks TEXT,
   field_sync_status VARCHAR(50) NOT NULL DEFAULT 'Not Sent'
     CHECK (field_sync_status IN (

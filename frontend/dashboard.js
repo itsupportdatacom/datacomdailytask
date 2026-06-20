@@ -311,6 +311,7 @@ const elements = {
   newLocation: document.getElementById("newLocation"),
   newPic: document.getElementById("newPic"),
   newContactNumber: document.getElementById("newContactNumber"),
+  newContactNumberNil: document.getElementById("newContactNumberNil"),
   newAssignedRole: document.getElementById("newAssignedRole"),
   newAssignedPerson: document.getElementById("newAssignedPerson"),
   newAssignedPersonButton: document.getElementById("newAssignedPersonButton"),
@@ -390,6 +391,7 @@ const elements = {
   editCompanyName: document.getElementById("editCompanyName"),
   editPic: document.getElementById("editPic"),
   editContactNumber: document.getElementById("editContactNumber"),
+  editContactNumberNil: document.getElementById("editContactNumberNil"),
   editLocation: document.getElementById("editLocation"),
   editProducts: document.getElementById("editProducts"),
   editAssignedRole: document.getElementById("editAssignedRole"),
@@ -480,7 +482,8 @@ async function apiRequest(path, options = {}) {
   });
   const body = response.status === 204 ? {} : await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.message || "Unable to complete the request.");
+    const details = Array.isArray(body.errors) ? ` ${body.errors.join(" ")}` : "";
+    throw new Error(`${body.message || "Unable to complete the request."}${details}`);
   }
   return body;
 }
@@ -488,7 +491,7 @@ async function apiRequest(path, options = {}) {
 async function loadDatabaseData() {
   const scheduleData = await apiRequest("/schedules");
   scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
-  notifications = [];
+  notifications = await loadNotificationData();
   lastDataRefreshAt = new Date();
 
   if (session.role === "Admin") {
@@ -498,14 +501,13 @@ async function loadDatabaseData() {
     ]);
     dummyUsers = userData.users;
     rolePermissions.splice(0, rolePermissions.length, ...permissionData.permissions);
-    notifications = await loadNotificationData();
   }
 }
 
 async function loadScheduleAndNotificationData() {
   const scheduleData = await apiRequest("/schedules");
   scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
-  notifications = session.role === "Admin" ? await loadNotificationData() : [];
+  notifications = await loadNotificationData();
   lastDataRefreshAt = new Date();
 }
 
@@ -552,6 +554,16 @@ function setTbaDateControl(input, checkbox, useTba) {
   input.required = !useTba;
   if (useTba) {
     input.value = "";
+  }
+}
+
+function setNilContactControl(input, checkbox, useNil, requiredWhenProvided = false) {
+  checkbox.checked = useNil;
+  input.disabled = useNil;
+  input.required = requiredWhenProvided && !useNil;
+  if (useNil) {
+    input.value = "";
+    input.classList.remove("invalid-field");
   }
 }
 
@@ -822,9 +834,6 @@ async function markAllNotificationsRead() {
 }
 
 function showUnreadUpdatesToast() {
-  if (session.role === "Sales") {
-    return;
-  }
   const unreadImportantCount = getImportantUpdates().filter((notification) => !notification.read).length;
   if (unreadImportantCount > 0) {
     const updateLabel = unreadImportantCount === 1 ? "important update" : "important updates";
@@ -975,12 +984,8 @@ function renderRoleDisplay() {
   elements.profileName.textContent = session.username;
   elements.profileRole.textContent = session.role;
   elements.avatar.textContent = initials(session.username);
-  const isAdmin = session.role === "Admin";
-  elements.notificationCenter.classList.toggle("hidden", !isAdmin);
+  elements.notificationCenter.classList.remove("hidden");
   elements.clearLaunchDataHeaderButton.classList.toggle("hidden", !["Admin", "Management"].includes(session.role));
-  if (!isAdmin) {
-    closeNotificationPanel();
-  }
   elements.recentUpdatesPanel.classList.add("hidden");
   elements.addScheduleButton.classList.toggle(
     "hidden",
@@ -1211,6 +1216,7 @@ function prepareAddScheduleForm() {
   renderAssignedPersonOptions();
   updateTypeShortcuts();
   setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, false);
+  setNilContactControl(elements.newContactNumber, elements.newContactNumberNil, false, true);
   elements.newScheduleDate.value = "";
   elements.newInputBy.value = session.username;
 }
@@ -1746,7 +1752,7 @@ function createScheduleRow(entry) {
   row.appendChild(createCell(entry.products, "products"));
   row.appendChild(createCell(entry.location));
   row.appendChild(createCell(entry.pic || "-"));
-  row.appendChild(createCell(entry.contactNumber || "-"));
+  row.appendChild(createCell(formatContactNumber(entry.contactNumber)));
   row.appendChild(createCell(entry.assignedRole || "-", "assigned-role"));
   row.appendChild(createCell(entry.assignedPerson || "-"));
   row.appendChild(createCell(entry.priority || "Normal"));
@@ -1789,7 +1795,7 @@ function openScheduleDetails(scheduleId) {
   elements.detailCompany.textContent = entry.companyName;
   elements.detailLocation.textContent = entry.location;
   elements.detailPic.textContent = entry.pic || "-";
-  elements.detailContactNumber.textContent = entry.contactNumber || "-";
+  elements.detailContactNumber.textContent = formatContactNumber(entry.contactNumber);
   elements.detailAssignedRole.textContent = entry.assignedRole || "-";
   elements.detailAssignedPerson.textContent = entry.assignedPerson || "-";
   elements.detailPriority.textContent = entry.priority || "Normal";
@@ -1956,7 +1962,7 @@ function setScheduleEditAccess(entry) {
     location: [elements.editLocation],
     products: [elements.editProducts],
     pic: [elements.editPic],
-    contactNumber: [elements.editContactNumber],
+    contactNumber: [elements.editContactNumber, elements.editContactNumberNil],
     assignedRole: [elements.editAssignedRole],
     assignedPerson: [elements.editAssignedPerson],
     priority: [elements.editPriority],
@@ -1989,7 +1995,10 @@ function openScheduleEditor() {
   elements.editPsNo.value = entry.psNo;
   elements.editCompanyName.value = entry.companyName;
   elements.editPic.value = entry.pic === "-" ? "" : entry.pic;
-  elements.editContactNumber.value = entry.contactNumber === "-" ? "" : entry.contactNumber;
+  setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, !entry.contactNumber || entry.contactNumber === "-");
+  if (entry.contactNumber && entry.contactNumber !== "-") {
+    elements.editContactNumber.value = entry.contactNumber;
+  }
   elements.editLocation.value = entry.location;
   elements.editProducts.value = entry.products;
   setFilterOptions(elements.editAssignedRole, assignedRoleOptions, "Optional", entry.assignedRole === "-" ? "" : entry.assignedRole);
@@ -2013,6 +2022,7 @@ async function saveScheduleChanges(event) {
   if (!entry) {
     return;
   }
+  const assignment = getScheduleAssignmentPayload(elements.editAssignedRole, elements.editAssignedPerson);
   const updates = {
     date: elements.editScheduleDateTba.checked ? tbaValue : elements.editScheduleDate.value,
     requestedTime: elements.editRequestedTime.value,
@@ -2020,11 +2030,11 @@ async function saveScheduleChanges(event) {
     psNo: elements.editPsNo.value.trim(),
     companyName: elements.editCompanyName.value.trim(),
     pic: elements.editPic.value.trim() || "-",
-    contactNumber: elements.editContactNumber.value.trim() || "-",
+    contactNumber: elements.editContactNumberNil.checked ? "-" : elements.editContactNumber.value.trim() || "-",
     location: elements.editLocation.value.trim(),
     products: elements.editProducts.value.trim(),
-    assignedRole: elements.editAssignedRole.value,
-    assignedPerson: getSelectedMultiValues(elements.editAssignedPerson).join(", ") || "-",
+    assignedRole: assignment.assignedRole,
+    assignedPerson: assignment.assignedPerson,
     priority: elements.editPriority.value,
     remarks: elements.editRemarks.value.trim() || "-",
     status: entry.status
@@ -2164,7 +2174,7 @@ function getScheduleExportCells(entry) {
     entry.products,
     entry.location,
     entry.pic || "-",
-    entry.contactNumber || "-",
+    formatContactNumber(entry.contactNumber),
     entry.assignedRole || "-",
     entry.assignedPerson || "-",
     entry.priority || "Normal",
@@ -2389,11 +2399,18 @@ function getRequiredScheduleFields() {
     { element: elements.newLocation, name: "location", label: "Location" },
     { element: elements.newPic, name: "pic", label: "PIC" },
     { element: elements.newContactNumber, name: "contactNumber", label: "Contact Number" },
-    { element: elements.newAssignedRole, name: "assignedRole", label: "Assigned Role" },
     { element: elements.newPriority, name: "priority", label: "Priority" },
     { element: elements.newInputBy, name: "inputBy", label: "Input By" },
     { element: elements.newStatus, name: "status", label: "Status" }
-  ].filter((field) => field.name !== "date" || !elements.newScheduleDateTba.checked);
+  ].filter((field) => {
+    if (field.name === "date") {
+      return !elements.newScheduleDateTba.checked;
+    }
+    if (field.name === "contactNumber") {
+      return !elements.newContactNumberNil.checked;
+    }
+    return true;
+  });
 }
 
 function validateAddScheduleForm() {
@@ -2436,6 +2453,7 @@ async function saveNewSchedule(event) {
   if (!validateAddScheduleForm()) {
     return;
   }
+  const assignment = getScheduleAssignmentPayload(elements.newAssignedRole, elements.newAssignedPerson);
   const record = {
     date: elements.newScheduleDateTba.checked ? tbaValue : elements.newScheduleDate.value,
     requestedTime: elements.newRequestedTime.value,
@@ -2445,9 +2463,9 @@ async function saveNewSchedule(event) {
     products: elements.newProducts.value.trim(),
     location: elements.newLocation.value.trim(),
     pic: elements.newPic.value.trim(),
-    contactNumber: elements.newContactNumber.value.trim(),
-    assignedRole: elements.newAssignedRole.value,
-    assignedPerson: getSelectedMultiValues(elements.newAssignedPerson).join(", "),
+    contactNumber: elements.newContactNumberNil.checked ? "-" : elements.newContactNumber.value.trim(),
+    assignedRole: assignment.assignedRole,
+    assignedPerson: assignment.assignedPerson,
     priority: elements.newPriority.value,
     inputBy: elements.newInputBy.value.trim(),
     remarks: elements.newRemarks.value.trim() || "-",
@@ -2505,6 +2523,12 @@ function normalizeAssignedRole(value) {
   return value === "Warehouse" ? "All Team" : value;
 }
 
+function getScheduleAssignmentPayload(roleElement, personElement) {
+  const assignedRole = roleElement.value || "All Team";
+  const assignedPerson = getSelectedMultiValues(personElement).join(", ") || "Unassigned";
+  return { assignedRole, assignedPerson };
+}
+
 function normalizeScheduleRecord(record) {
   return {
     ...record,
@@ -2533,6 +2557,10 @@ function formatTime(value) {
     minute: "2-digit",
     hour12: true
   }).format(date);
+}
+
+function formatContactNumber(value) {
+  return value && value !== "-" ? value : "Nil";
 }
 
 function bindActions() {
@@ -2641,6 +2669,19 @@ function bindActions() {
   elements.newScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, elements.newScheduleDateTba.checked));
   elements.editScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.editScheduleDate, elements.editScheduleDateTba, elements.editScheduleDateTba.checked));
   elements.carryForwardDateTba.addEventListener("change", () => setTbaDateControl(elements.carryForwardDate, elements.carryForwardDateTba, elements.carryForwardDateTba.checked));
+  elements.newContactNumberNil.addEventListener("change", () => {
+    setNilContactControl(elements.newContactNumber, elements.newContactNumberNil, elements.newContactNumberNil.checked, true);
+    if (elements.newContactNumberNil.checked) {
+      elements.newContactNumber.classList.remove("invalid-field");
+      elements.addScheduleForm.querySelector('[data-error-for="contactNumber"]').textContent = "";
+      if (!elements.addScheduleForm.querySelector(".invalid-field")) {
+        elements.addScheduleErrorSummary.classList.add("hidden");
+      }
+    }
+  });
+  elements.editContactNumberNil.addEventListener("change", () => {
+    setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, elements.editContactNumberNil.checked);
+  });
   elements.newScheduleType.addEventListener("change", updateTypeShortcuts);
   elements.typeShortcuts.forEach((button) => {
     button.addEventListener("click", () => selectScheduleType(button.dataset.typeShortcut));
