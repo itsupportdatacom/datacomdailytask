@@ -791,7 +791,7 @@
 
         <section class="workflow-notice" aria-label="Auto mail backend requirement">
           <strong>Automatic mail enabled by backend</strong>
-          <p>Automatic mail sends every day at 5:30 PM Asia/Singapore. If no schedule exists today, boss will receive “Today no schedule.”</p>
+          <p>Automatic mail sends at the saved time, with an optional Saturday report at 12:30 PM Asia/Singapore. If no schedule exists today, boss will receive “Today no schedule.”</p>
         </section>
 
         <div class="auto-mail-grid">
@@ -800,7 +800,7 @@
               <div>
                 <p class="eyebrow">Mail Rule</p>
                 <h2>Daily Schedule Email</h2>
-                <p class="panel-description">Default rule: every day, 5:30 PM Singapore time.</p>
+                <p class="panel-description">Default rule: daily 5:30 PM, plus Saturday 12:30 PM when enabled.</p>
               </div>
             </div>
             <form class="settings-form auto-mail-form" id="autoMailForm">
@@ -839,6 +839,17 @@
                   Monday to Friday only
                   <small>Enable only if Saturday and Sunday should not send.</small>
                 </span>
+              </label>
+              <label class="toggle-setting">
+                <input id="autoMailSaturdayEnabled" type="checkbox" checked>
+                <span>
+                  Saturday report
+                  <small>Send the saved schedule report every Saturday.</small>
+                </span>
+              </label>
+              <label>
+                Saturday Send Time
+                <input id="autoMailSaturdayTime" type="time" value="12:30">
               </label>
               <label class="toggle-setting">
                 <input id="autoMailIncludeTba" type="checkbox">

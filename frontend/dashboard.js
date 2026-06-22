@@ -174,6 +174,8 @@ const defaultAutoMailSettings = {
   sendTime: "17:30",
   timezone: "Asia/Singapore",
   weekdaysOnly: false,
+  saturdayEnabled: true,
+  saturdaySendTime: "12:30",
   includeTbaSchedules: false,
   emailSubject: "Datacom Daily Schedule Report",
   lastStatus: "Ready for backend scheduler",
@@ -348,6 +350,8 @@ const elements = {
   autoMailSendTime: document.getElementById("autoMailSendTime"),
   autoMailTimezone: document.getElementById("autoMailTimezone"),
   autoMailWeekdays: document.getElementById("autoMailWeekdays"),
+  autoMailSaturdayEnabled: document.getElementById("autoMailSaturdayEnabled"),
+  autoMailSaturdayTime: document.getElementById("autoMailSaturdayTime"),
   autoMailIncludeTba: document.getElementById("autoMailIncludeTba"),
   autoMailSubject: document.getElementById("autoMailSubject"),
   autoMailPreviewDate: document.getElementById("autoMailPreviewDate"),
@@ -1122,6 +1126,8 @@ function renderAutoMailSettings() {
   elements.autoMailSendTime.value = autoMailSettings.sendTime || "17:30";
   elements.autoMailTimezone.value = autoMailSettings.timezone || "Asia/Singapore";
   elements.autoMailWeekdays.checked = Boolean(autoMailSettings.weekdaysOnly);
+  elements.autoMailSaturdayEnabled.checked = Boolean(autoMailSettings.saturdayEnabled);
+  elements.autoMailSaturdayTime.value = autoMailSettings.saturdaySendTime || "12:30";
   elements.autoMailIncludeTba.checked = Boolean(autoMailSettings.includeTbaSchedules);
   elements.autoMailSubject.value = autoMailSettings.emailSubject || "Datacom Daily Schedule Report";
   renderAutoMailPreview();
@@ -1137,6 +1143,8 @@ function normalizeAutoMailSettings(settings = {}) {
     sendTime: settings.sendTime || autoMailSettings.sendTime || defaultAutoMailSettings.sendTime,
     timezone: settings.timezone || autoMailSettings.timezone || defaultAutoMailSettings.timezone,
     weekdaysOnly: settings.weekdayOnly ?? settings.weekdaysOnly ?? autoMailSettings.weekdaysOnly ?? defaultAutoMailSettings.weekdaysOnly,
+    saturdayEnabled: settings.saturdayEnabled ?? autoMailSettings.saturdayEnabled ?? defaultAutoMailSettings.saturdayEnabled,
+    saturdaySendTime: settings.saturdaySendTime || autoMailSettings.saturdaySendTime || defaultAutoMailSettings.saturdaySendTime,
     includeTbaSchedules: settings.includeTbaSchedules ?? autoMailSettings.includeTbaSchedules ?? defaultAutoMailSettings.includeTbaSchedules,
     emailSubject: settings.emailSubject || settings.subject || autoMailSettings.emailSubject || defaultAutoMailSettings.emailSubject,
     lastStatus: settings.lastStatus || autoMailSettings.lastStatus || defaultAutoMailSettings.lastStatus,
@@ -1180,7 +1188,12 @@ function renderAutoMailPreview() {
   const [hour = "17", minute = "30"] = (autoMailSettings.sendTime || "17:30").split(":");
   elements.autoMailPreviewDate.textContent = label;
   elements.autoMailPreviewCount.textContent = String(previewEntries.length);
-  elements.autoMailCron.textContent = `${Number(minute)} ${Number(hour)} * * ${autoMailSettings.weekdaysOnly === false ? "*" : "1-5"}`;
+  const dailyCron = `${Number(minute)} ${Number(hour)} * * ${autoMailSettings.weekdaysOnly === false ? "*" : "1-5"}`;
+  const [saturdayHour = "12", saturdayMinute = "30"] = (autoMailSettings.saturdaySendTime || "12:30").split(":");
+  const saturdayCron = autoMailSettings.saturdayEnabled
+    ? `; Saturday ${Number(saturdayMinute)} ${Number(saturdayHour)} * * 6`
+    : "";
+  elements.autoMailCron.textContent = `${dailyCron}${saturdayCron}`;
   elements.autoMailLastStatus.textContent = autoMailSettings.lastStatus || "Ready for backend scheduler";
   elements.autoMailLastSent.textContent = autoMailSettings.lastSentAt || "-";
   const rows = previewEntries.slice(0, 8).map((entry) => {
@@ -1216,6 +1229,8 @@ async function saveAutoMailSettings(event) {
     sendTime: elements.autoMailSendTime.value || "17:30",
     timezone: elements.autoMailTimezone.value.trim() || "Asia/Singapore",
     weekdaysOnly: elements.autoMailWeekdays.checked,
+    saturdayEnabled: elements.autoMailSaturdayEnabled.checked,
+    saturdaySendTime: elements.autoMailSaturdayTime.value || "12:30",
     includeTbaSchedules: elements.autoMailIncludeTba.checked,
     emailSubject: elements.autoMailSubject.value.trim() || "Datacom Daily Schedule Report"
   };
@@ -1230,6 +1245,8 @@ async function saveAutoMailSettings(event) {
         sendTime: settings.sendTime,
         timezone: settings.timezone,
         weekdayOnly: settings.weekdaysOnly,
+        saturdayEnabled: settings.saturdayEnabled,
+        saturdaySendTime: settings.saturdaySendTime,
         includeTbaSchedules: settings.includeTbaSchedules,
         emailSubject: settings.emailSubject
       })
