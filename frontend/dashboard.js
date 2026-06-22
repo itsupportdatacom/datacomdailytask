@@ -169,14 +169,15 @@ const fieldSyncStatuses = [
 ];
 const defaultAutoMailSettings = {
   enabled: true,
-  recipientEmail: "itsupportdatacom@gmail.com",
-  ccEmail: "",
+  recipientEmail: "cs.chan@dcomasia.com",
+  ccEmail: "june.loh@dcomasia.com, production@dcomasia.com",
   sendTime: "17:30",
   timezone: "Asia/Singapore",
-  weekdaysOnly: false,
+  weekdaysOnly: true,
   saturdayEnabled: true,
   saturdaySendTime: "12:30",
   includeTbaSchedules: false,
+  reportDateOffsetDays: 1,
   emailSubject: "Datacom Daily Schedule Report",
   lastStatus: "Ready for backend scheduler",
   lastSentAt: ""
@@ -353,6 +354,7 @@ const elements = {
   autoMailSaturdayTime: document.getElementById("autoMailSaturdayTime"),
   autoMailIncludeTba: document.getElementById("autoMailIncludeTba"),
   autoMailSubject: document.getElementById("autoMailSubject"),
+  autoMailPreviewSubject: document.getElementById("autoMailPreviewSubject"),
   autoMailPreviewDate: document.getElementById("autoMailPreviewDate"),
   autoMailPreviewCount: document.getElementById("autoMailPreviewCount"),
   autoMailLastStatus: document.getElementById("autoMailLastStatus"),
@@ -1149,6 +1151,7 @@ function normalizeAutoMailSettings(settings = {}) {
     saturdayEnabled: settings.saturdayEnabled ?? autoMailSettings.saturdayEnabled ?? defaultAutoMailSettings.saturdayEnabled,
     saturdaySendTime: settings.saturdaySendTime || autoMailSettings.saturdaySendTime || defaultAutoMailSettings.saturdaySendTime,
     includeTbaSchedules: settings.includeTbaSchedules ?? autoMailSettings.includeTbaSchedules ?? defaultAutoMailSettings.includeTbaSchedules,
+    reportDateOffsetDays: Number(settings.reportDateOffsetDays ?? autoMailSettings.reportDateOffsetDays ?? defaultAutoMailSettings.reportDateOffsetDays),
     emailSubject: settings.emailSubject || settings.subject || autoMailSettings.emailSubject || defaultAutoMailSettings.emailSubject,
     lastStatus: settings.lastStatus || autoMailSettings.lastStatus || defaultAutoMailSettings.lastStatus,
     lastSentAt: settings.lastSentAt || autoMailSettings.lastSentAt || defaultAutoMailSettings.lastSentAt
@@ -1178,17 +1181,24 @@ async function loadAutoMailSettings() {
 
 function renderAutoMailPreview() {
   const selectedDate = getSelectedDateValue();
-  const previewDate = selectedDate === tbaValue ? localDateString(new Date()) : selectedDate;
+  const sendDate = selectedDate === tbaValue ? localDateString(new Date()) : selectedDate;
+  const previewDate = getOffsetDateString(sendDate, autoMailSettings.reportDateOffsetDays || 1);
   const label = new Intl.DateTimeFormat("en-SG", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric"
   }).format(parseDate(previewDate));
+  const titleDate = new Intl.DateTimeFormat("en-SG", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(parseDate(previewDate));
   const previewEntries = scheduleRecords
     .filter((entry) => entry.date === previewDate || (autoMailSettings.includeTbaSchedules && entry.date === tbaValue))
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
   const [hour = "17", minute = "30"] = (autoMailSettings.sendTime || "17:30").split(":");
+  elements.autoMailPreviewSubject.textContent = `${autoMailSettings.emailSubject || "Datacom Daily Schedule Report"} - ${titleDate}`;
   elements.autoMailPreviewDate.textContent = label;
   elements.autoMailPreviewCount.textContent = String(previewEntries.length);
   const dailyCron = `${Number(minute)} ${Number(hour)} * * ${autoMailSettings.weekdaysOnly === false ? "*" : "1-5"}`;
@@ -1216,7 +1226,7 @@ function renderAutoMailPreview() {
     const cell = document.createElement("td");
     cell.colSpan = 4;
     cell.className = "auto-mail-empty";
-    cell.textContent = "No saved schedules for the selected date.";
+    cell.textContent = "No saved schedules for the next schedule date.";
     row.appendChild(cell);
     rows.push(row);
   }
@@ -1235,6 +1245,7 @@ async function saveAutoMailSettings(event) {
     saturdayEnabled: elements.autoMailSaturdayEnabled.checked,
     saturdaySendTime: elements.autoMailSaturdayTime.value || "12:30",
     includeTbaSchedules: elements.autoMailIncludeTba.checked,
+    reportDateOffsetDays: 1,
     emailSubject: elements.autoMailSubject.value.trim() || "Datacom Daily Schedule Report"
   };
   elements.saveAutoMailSettings.disabled = true;
@@ -1251,6 +1262,7 @@ async function saveAutoMailSettings(event) {
         saturdayEnabled: settings.saturdayEnabled,
         saturdaySendTime: settings.saturdaySendTime,
         includeTbaSchedules: settings.includeTbaSchedules,
+        reportDateOffsetDays: settings.reportDateOffsetDays,
         emailSubject: settings.emailSubject
       })
     });
@@ -2491,6 +2503,12 @@ function localDateString(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function getOffsetDateString(value, offsetDays) {
+  const date = parseDate(value);
+  date.setDate(date.getDate() + offsetDays);
+  return localDateString(date);
 }
 
 function getSelectedSchedule() {

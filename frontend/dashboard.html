@@ -787,7 +787,7 @@
 
         <section class="workflow-notice" aria-label="Auto mail backend requirement">
           <strong>Automatic mail enabled by backend</strong>
-          <p>Automatic mail sends at the saved time, with an optional Saturday report at 12:30 PM Asia/Singapore. If no schedule exists today, boss will receive “Today no schedule.”</p>
+          <p>Automatic mail sends the next day's saved schedules at the saved time, with an optional Saturday report at 12:30 PM Asia/Singapore. If no next-day schedule exists, boss will receive "Today no schedule."</p>
         </section>
 
         <div class="auto-mail-grid">
@@ -796,7 +796,7 @@
               <div>
                 <p class="eyebrow">Mail Rule</p>
                 <h2>Daily Schedule Email</h2>
-                <p class="panel-description">Default rule: daily 5:30 PM, plus Saturday 12:30 PM when enabled.</p>
+                <p class="panel-description">Default rule: send tomorrow's schedules daily at 5:30 PM, plus Saturday 12:30 PM when enabled.</p>
               </div>
             </div>
             <form class="settings-form auto-mail-form" id="autoMailForm">
@@ -809,11 +809,11 @@
               </label>
               <label>
                 Boss Email
-                <input id="autoMailRecipient" type="email" value="itsupportdatacom@gmail.com">
+                <input id="autoMailRecipient" type="email" value="cs.chan@dcomasia.com">
               </label>
               <label>
                 CC Email
-                <input id="autoMailCc" type="text">
+                <input id="autoMailCc" type="text" value="june.loh@dcomasia.com, production@dcomasia.com">
               </label>
               <div class="time-setting-row">
                 <label>
@@ -830,7 +830,7 @@
                 <input id="autoMailSubject" type="text" value="Datacom Daily Schedule Report">
               </label>
               <label class="toggle-setting">
-                <input id="autoMailWeekdays" type="checkbox">
+                <input id="autoMailWeekdays" type="checkbox" checked>
                 <span>
                   Monday to Friday only
                   <small>Enable only if Saturday and Sunday should not send.</small>
@@ -840,7 +840,7 @@
                 <input id="autoMailSaturdayEnabled" type="checkbox" checked>
                 <span>
                   Saturday report
-                  <small>Send the saved schedule report every Saturday.</small>
+                  <small>Send the next day's saved schedules every Saturday.</small>
                 </span>
               </label>
               <label>
@@ -865,11 +865,15 @@
             <div class="panel-heading">
               <div>
                 <p class="eyebrow">Preview</p>
-                <h2>Today Email Summary</h2>
-                <p class="panel-description">This preview uses the schedule date selected on the dashboard.</p>
+                <h2>Next Day Email Summary</h2>
+                <p class="panel-description">This preview sends on the dashboard date and uses tomorrow's saved schedules.</p>
               </div>
             </div>
             <div class="auto-mail-summary">
+              <div>
+                <span>Email Title</span>
+                <strong id="autoMailPreviewSubject">-</strong>
+              </div>
               <div>
                 <span>Schedule Date</span>
                 <strong id="autoMailPreviewDate">-</strong>
