@@ -1402,6 +1402,97 @@ body.add-schedule-view .date-selector {
   height: 43px;
 }
 
+.auto-mail-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(360px, 1.05fr);
+  gap: 20px;
+}
+
+.auto-mail-settings-panel,
+.auto-mail-status-panel {
+  align-self: start;
+}
+
+.auto-mail-form {
+  padding: 0 25px 25px;
+}
+
+.toggle-setting {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfe;
+}
+
+.toggle-setting input {
+  width: 17px !important;
+  height: 17px !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+  accent-color: var(--blue);
+}
+
+.toggle-setting span {
+  display: grid;
+  gap: 4px;
+  color: #304960;
+  font-weight: 700;
+}
+
+.toggle-setting small {
+  color: #70869a;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.auto-mail-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 12px;
+  padding: 0 25px 22px;
+}
+
+.auto-mail-summary div {
+  min-height: 82px;
+  padding: 14px;
+  border: 1px solid #e0e8f0;
+  border-radius: 8px;
+  background: #f8fbfe;
+}
+
+.auto-mail-summary span {
+  display: block;
+  margin-bottom: 8px;
+  color: #70869a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auto-mail-summary strong {
+  color: var(--navy);
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.auto-mail-preview-table {
+  margin: 0 25px 25px;
+}
+
+.auto-mail-preview-table table {
+  min-width: 520px;
+}
+
+.auto-mail-empty {
+  padding: 28px 16px;
+  color: #70869a;
+  text-align: center;
+}
+
 .maintenance-note {
   margin: 19px 0;
   padding: 15px 17px;
@@ -2552,6 +2643,10 @@ td.assigned-role {
     grid-template-columns: 1fr;
   }
 
+  .auto-mail-grid {
+    grid-template-columns: 1fr;
+  }
+
   .profile-settings,
   .maintenance-settings {
     grid-row: auto;
@@ -2587,6 +2682,21 @@ td.assigned-role {
 
   .time-setting-row {
     grid-template-columns: 1fr;
+  }
+
+  .auto-mail-form,
+  .auto-mail-summary {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .auto-mail-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .auto-mail-preview-table {
+    margin-right: 18px;
+    margin-left: 18px;
   }
 
   .modal-backdrop {

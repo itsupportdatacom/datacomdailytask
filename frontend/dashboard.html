@@ -779,6 +779,127 @@
           </section>
         </div>
       </section>
+
+      <section class="auto-mail hidden" id="autoMail">
+        <div class="management-heading">
+          <div>
+            <p class="eyebrow">Operations</p>
+            <h1>Auto Mail</h1>
+            <p class="subtitle">Prepare the daily saved schedule email automation for Admin and Warehouse users.</p>
+          </div>
+        </div>
+
+        <section class="workflow-notice" aria-label="Auto mail backend requirement">
+          <strong>Automatic mail enabled by backend</strong>
+          <p>Automatic mail sends every day at 5:30 PM Asia/Singapore. If no schedule exists today, boss will receive “Today no schedule.”</p>
+        </section>
+
+        <div class="auto-mail-grid">
+          <section class="schedule-panel auto-mail-settings-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Mail Rule</p>
+                <h2>Daily Schedule Email</h2>
+                <p class="panel-description">Default rule: every day, 5:30 PM Singapore time.</p>
+              </div>
+            </div>
+            <form class="settings-form auto-mail-form" id="autoMailForm">
+              <label class="toggle-setting">
+                <input id="autoMailEnabled" type="checkbox" checked>
+                <span>
+                  Enable auto mail
+                  <small>Backend scheduler should skip sending when disabled.</small>
+                </span>
+              </label>
+              <label>
+                Boss Email
+                <input id="autoMailRecipient" type="email" value="itsupportdatacom@gmail.com">
+              </label>
+              <label>
+                CC Email
+                <input id="autoMailCc" type="email" value="funz.foong@dcom.com.sg">
+              </label>
+              <div class="time-setting-row">
+                <label>
+                  Send Time
+                  <input id="autoMailSendTime" type="time" value="17:30">
+                </label>
+                <label>
+                  Timezone
+                  <input id="autoMailTimezone" type="text" value="Asia/Singapore">
+                </label>
+              </div>
+              <label>
+                Email Subject
+                <input id="autoMailSubject" type="text" value="Datacom Daily Schedule Report">
+              </label>
+              <label class="toggle-setting">
+                <input id="autoMailWeekdays" type="checkbox">
+                <span>
+                  Monday to Friday only
+                  <small>Enable only if Saturday and Sunday should not send.</small>
+                </span>
+              </label>
+              <label class="toggle-setting">
+                <input id="autoMailIncludeTba" type="checkbox">
+                <span>
+                  Include TBA schedules
+                  <small>Add schedules without confirmed dates into the email.</small>
+                </span>
+              </label>
+              <div class="form-actions">
+                <button class="primary-button" id="saveAutoMailSettings" type="submit">Save Settings</button>
+                <button class="secondary-button" id="testAutoMailButton" type="button">Send Test Mail</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="schedule-panel auto-mail-status-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Preview</p>
+                <h2>Today Email Summary</h2>
+                <p class="panel-description">This preview uses the schedule date selected on the dashboard.</p>
+              </div>
+            </div>
+            <div class="auto-mail-summary">
+              <div>
+                <span>Schedule Date</span>
+                <strong id="autoMailPreviewDate">-</strong>
+              </div>
+              <div>
+                <span>Saved Schedules</span>
+                <strong id="autoMailPreviewCount">0</strong>
+              </div>
+              <div>
+                <span>Backend Cron</span>
+                <strong id="autoMailCron">30 17 * * *</strong>
+              </div>
+              <div>
+                <span>Last Status</span>
+                <strong id="autoMailLastStatus">Ready for backend scheduler</strong>
+              </div>
+              <div>
+                <span>Last Sent</span>
+                <strong id="autoMailLastSent">-</strong>
+              </div>
+            </div>
+            <div class="table-container auto-mail-preview-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Reference</th>
+                    <th>Company</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="autoMailPreviewRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
   </div>
 

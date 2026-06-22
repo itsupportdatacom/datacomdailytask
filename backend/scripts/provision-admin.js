@@ -26,6 +26,11 @@ async function provisionAdmin() {
   try {
     await client.query("BEGIN");
 
+    await client.query("DELETE FROM notifications");
+    await client.query("DELETE FROM activity_logs");
+    await client.query("DELETE FROM schedules");
+    await client.query("DELETE FROM users WHERE LOWER(username) <> LOWER($1)", [username]);
+
     await client.query(
       `INSERT INTO users (username, password_hash, role, status)
        VALUES ($1, $2, 'Admin', 'Active')
@@ -53,7 +58,7 @@ async function provisionAdmin() {
     }
 
     await client.query("COMMIT");
-    console.log(`Provisioned active Admin user "${username}" and baseline role permissions.`);
+    console.log(`Cleaned launch data and provisioned active Admin user "${username}" with baseline role permissions.`);
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;

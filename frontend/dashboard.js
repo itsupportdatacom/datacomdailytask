@@ -18,6 +18,7 @@ const roleMenus = {
     { label: "Dashboard", icon: "\u25a6", section: "dashboard" },
     { label: "Add Schedule", icon: "+", section: "addSchedule" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" },
+    { label: "Auto Mail", icon: "\u2709", section: "autoMail" },
     { label: "Reports", icon: "\ud83d\udcca", section: "dailySchedule" },
     { label: "Update Status", icon: "\u2713", section: "dailySchedule" }
   ],
@@ -31,6 +32,7 @@ const roleMenus = {
     { label: "User Management", icon: "\ud83d\udc65", section: "userManagement" },
     { label: "Role Settings", icon: "\ud83d\udd11", section: "roleSettings" },
     { label: "System Settings", icon: "\u2699", section: "systemSettings" },
+    { label: "Auto Mail", icon: "\u2709", section: "autoMail" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" }
   ]
 };
@@ -165,6 +167,19 @@ const fieldSyncStatuses = [
   "Issue Reported",
   "Carried Forward"
 ];
+const defaultAutoMailSettings = {
+  enabled: true,
+  recipientEmail: "itsupportdatacom@gmail.com",
+  ccEmail: "funz.foong@dcom.com.sg",
+  sendTime: "17:30",
+  timezone: "Asia/Singapore",
+  weekdaysOnly: false,
+  includeTbaSchedules: false,
+  emailSubject: "Datacom Daily Schedule Report",
+  lastStatus: "Ready for backend scheduler",
+  lastSentAt: ""
+};
+let autoMailSettings = { ...defaultAutoMailSettings };
 
 const assignmentDirectory = {
   Driver: assignedPersonOptions,
@@ -197,7 +212,8 @@ const defaultAppData = {
   testingChecklist: testingChecklist.map((test) => ({ ...test })),
   settings: {
     scheduleTypes: [...scheduleTypes],
-    scheduleStatuses: [...scheduleStatuses]
+    scheduleStatuses: [...scheduleStatuses],
+    autoMail: { ...autoMailSettings }
   },
   uiState: {
     selectedDate: localDateString(new Date()),
@@ -324,6 +340,24 @@ const elements = {
   userManagement: document.getElementById("userManagement"),
   roleSettings: document.getElementById("roleSettings"),
   systemSettings: document.getElementById("systemSettings"),
+  autoMail: document.getElementById("autoMail"),
+  autoMailForm: document.getElementById("autoMailForm"),
+  autoMailEnabled: document.getElementById("autoMailEnabled"),
+  autoMailRecipient: document.getElementById("autoMailRecipient"),
+  autoMailCc: document.getElementById("autoMailCc"),
+  autoMailSendTime: document.getElementById("autoMailSendTime"),
+  autoMailTimezone: document.getElementById("autoMailTimezone"),
+  autoMailWeekdays: document.getElementById("autoMailWeekdays"),
+  autoMailIncludeTba: document.getElementById("autoMailIncludeTba"),
+  autoMailSubject: document.getElementById("autoMailSubject"),
+  autoMailPreviewDate: document.getElementById("autoMailPreviewDate"),
+  autoMailPreviewCount: document.getElementById("autoMailPreviewCount"),
+  autoMailLastStatus: document.getElementById("autoMailLastStatus"),
+  autoMailLastSent: document.getElementById("autoMailLastSent"),
+  autoMailCron: document.getElementById("autoMailCron"),
+  autoMailPreviewRows: document.getElementById("autoMailPreviewRows"),
+  saveAutoMailSettings: document.getElementById("saveAutoMailSettings"),
+  testAutoMailButton: document.getElementById("testAutoMailButton"),
   testingChecklist: document.getElementById("testingChecklist"),
   testingChecklistRows: document.getElementById("testingChecklistRows"),
   userRows: document.getElementById("userRows"),
@@ -1019,11 +1053,13 @@ function showSection(section, menuLabel = "") {
   const isUserManagement = session.role === "Admin" && section === "userManagement";
   const isRoleSettings = session.role === "Admin" && section === "roleSettings";
   const isSystemSettings = session.role === "Admin" && section === "systemSettings";
+  const isAutoMail = ["Admin", "Warehouse"].includes(session.role) && section === "autoMail";
   const isTestingChecklist = session.role === "Admin" && section === "testingChecklist";
   const isDailySchedule = section === "dailySchedule";
   const isAddSchedule = ["Sales", "Warehouse"].includes(session.role) && section === "addSchedule";
   const isAdminPanel = isUserManagement || isRoleSettings || isSystemSettings || isTestingChecklist;
-  currentSection = isAdminPanel || isDailySchedule || isAddSchedule ? section : "dashboard";
+  const isStandalonePanel = isAdminPanel || isAutoMail;
+  currentSection = isStandalonePanel || isDailySchedule || isAddSchedule ? section : "dashboard";
   document.body.classList.toggle("add-schedule-view", isAddSchedule);
   activeMenuLabel = menuLabel || (
     currentSection === "dashboard"
@@ -1038,14 +1074,17 @@ function showSection(section, menuLabel = "") {
             ? "Role Settings"
             : currentSection === "systemSettings"
               ? "System Settings"
-              : "Testing Checklist"
+              : currentSection === "autoMail"
+                ? "Auto Mail"
+                : "Testing Checklist"
   );
-  elements.schedulePageHeading.classList.toggle("hidden", isAdminPanel);
+  elements.schedulePageHeading.classList.toggle("hidden", isStandalonePanel);
   elements.addSchedule.classList.toggle("hidden", !isAddSchedule);
   elements.dailySchedule.classList.toggle("hidden", !isDailySchedule);
   elements.userManagement.classList.toggle("hidden", !isUserManagement);
   elements.roleSettings.classList.toggle("hidden", !isRoleSettings);
   elements.systemSettings.classList.toggle("hidden", !isSystemSettings);
+  elements.autoMail.classList.toggle("hidden", !isAutoMail);
   elements.testingChecklist.classList.toggle("hidden", !isTestingChecklist);
   elements.dashboardSection.classList.toggle(
     "hidden",
@@ -1057,6 +1096,10 @@ function showSection(section, menuLabel = "") {
   );
   if (isAddSchedule) {
     prepareAddScheduleForm();
+  }
+  if (isAutoMail) {
+    renderAutoMailSettings();
+    loadAutoMailSettings();
   }
   elements.scheduleHeading.textContent = session.role === "Sales" ? "My Schedule" : "Daily Schedule";
   if (!isRoleSettings) {
@@ -1070,6 +1113,148 @@ function showSection(section, menuLabel = "") {
 function renderSystemSettings() {
   elements.scheduleTypeList.replaceChildren(...scheduleTypes.map(createSettingTag));
   elements.statusSettingList.replaceChildren(...scheduleStatuses.map(createSettingTag));
+}
+
+function renderAutoMailSettings() {
+  elements.autoMailEnabled.checked = Boolean(autoMailSettings.enabled);
+  elements.autoMailRecipient.value = autoMailSettings.recipientEmail || "";
+  elements.autoMailCc.value = autoMailSettings.ccEmail || "";
+  elements.autoMailSendTime.value = autoMailSettings.sendTime || "17:30";
+  elements.autoMailTimezone.value = autoMailSettings.timezone || "Asia/Singapore";
+  elements.autoMailWeekdays.checked = Boolean(autoMailSettings.weekdaysOnly);
+  elements.autoMailIncludeTba.checked = Boolean(autoMailSettings.includeTbaSchedules);
+  elements.autoMailSubject.value = autoMailSettings.emailSubject || "Datacom Daily Schedule Report";
+  renderAutoMailPreview();
+}
+
+function normalizeAutoMailSettings(settings = {}) {
+  return {
+    ...defaultAutoMailSettings,
+    ...autoMailSettings,
+    enabled: settings.enabled ?? autoMailSettings.enabled ?? defaultAutoMailSettings.enabled,
+    recipientEmail: settings.bossEmail || settings.recipientEmail || autoMailSettings.recipientEmail || defaultAutoMailSettings.recipientEmail,
+    ccEmail: settings.ccEmail || autoMailSettings.ccEmail || defaultAutoMailSettings.ccEmail,
+    sendTime: settings.sendTime || autoMailSettings.sendTime || defaultAutoMailSettings.sendTime,
+    timezone: settings.timezone || autoMailSettings.timezone || defaultAutoMailSettings.timezone,
+    weekdaysOnly: settings.weekdayOnly ?? settings.weekdaysOnly ?? autoMailSettings.weekdaysOnly ?? defaultAutoMailSettings.weekdaysOnly,
+    includeTbaSchedules: settings.includeTbaSchedules ?? autoMailSettings.includeTbaSchedules ?? defaultAutoMailSettings.includeTbaSchedules,
+    emailSubject: settings.emailSubject || settings.subject || autoMailSettings.emailSubject || defaultAutoMailSettings.emailSubject,
+    lastStatus: settings.lastStatus || autoMailSettings.lastStatus || defaultAutoMailSettings.lastStatus,
+    lastSentAt: settings.lastSentAt || autoMailSettings.lastSentAt || defaultAutoMailSettings.lastSentAt
+  };
+}
+
+async function loadAutoMailSettings() {
+  try {
+    const result = await apiRequest("/auto-mail/settings");
+    autoMailSettings = normalizeAutoMailSettings(result.settings);
+    persistAppData();
+    renderAutoMailSettings();
+  } catch (error) {
+    autoMailSettings = normalizeAutoMailSettings();
+    renderAutoMailSettings();
+    showToast(error.message);
+  }
+}
+
+function renderAutoMailPreview() {
+  const selectedDate = getSelectedDateValue();
+  const previewDate = selectedDate === tbaValue ? localDateString(new Date()) : selectedDate;
+  const label = new Intl.DateTimeFormat("en-SG", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  }).format(parseDate(previewDate));
+  const previewEntries = scheduleRecords
+    .filter((entry) => entry.date === previewDate || (autoMailSettings.includeTbaSchedules && entry.date === tbaValue))
+    .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
+  const [hour = "17", minute = "30"] = (autoMailSettings.sendTime || "17:30").split(":");
+  elements.autoMailPreviewDate.textContent = label;
+  elements.autoMailPreviewCount.textContent = String(previewEntries.length);
+  elements.autoMailCron.textContent = `${Number(minute)} ${Number(hour)} * * ${autoMailSettings.weekdaysOnly === false ? "*" : "1-5"}`;
+  elements.autoMailLastStatus.textContent = autoMailSettings.lastStatus || "Ready for backend scheduler";
+  elements.autoMailLastSent.textContent = autoMailSettings.lastSentAt || "-";
+  const rows = previewEntries.slice(0, 8).map((entry) => {
+    const row = document.createElement("tr");
+    const statusCell = document.createElement("td");
+    statusCell.appendChild(createBadge(entry.status, statusClass(entry.status), "status-badge"));
+    row.append(
+      createCell(formatTime(entry.requestedTime)),
+      createCell(entry.psNo),
+      createCell(entry.companyName),
+      statusCell
+    );
+    return row;
+  });
+  if (!rows.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 4;
+    cell.className = "auto-mail-empty";
+    cell.textContent = "No saved schedules for the selected date.";
+    row.appendChild(cell);
+    rows.push(row);
+  }
+  elements.autoMailPreviewRows.replaceChildren(...rows);
+}
+
+async function saveAutoMailSettings(event) {
+  event.preventDefault();
+  const settings = {
+    enabled: elements.autoMailEnabled.checked,
+    recipientEmail: elements.autoMailRecipient.value.trim(),
+    ccEmail: elements.autoMailCc.value.trim(),
+    sendTime: elements.autoMailSendTime.value || "17:30",
+    timezone: elements.autoMailTimezone.value.trim() || "Asia/Singapore",
+    weekdaysOnly: elements.autoMailWeekdays.checked,
+    includeTbaSchedules: elements.autoMailIncludeTba.checked,
+    emailSubject: elements.autoMailSubject.value.trim() || "Datacom Daily Schedule Report"
+  };
+  elements.saveAutoMailSettings.disabled = true;
+  try {
+    const result = await apiRequest("/auto-mail/settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        enabled: settings.enabled,
+        bossEmail: settings.recipientEmail,
+        ccEmail: settings.ccEmail,
+        sendTime: settings.sendTime,
+        timezone: settings.timezone,
+        weekdayOnly: settings.weekdaysOnly,
+        includeTbaSchedules: settings.includeTbaSchedules,
+        emailSubject: settings.emailSubject
+      })
+    });
+    autoMailSettings = normalizeAutoMailSettings(result.settings || settings);
+    autoMailSettings.lastStatus = result.message || "Auto mail settings saved.";
+    persistAppData();
+    renderAutoMailSettings();
+    showToast(result.message || "Auto mail settings saved.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    elements.saveAutoMailSettings.disabled = false;
+  }
+}
+
+async function requestAutoMailTest() {
+  elements.testAutoMailButton.disabled = true;
+  try {
+    const result = await apiRequest("/auto-mail/daily-schedule/test", { method: "POST" });
+    autoMailSettings.lastStatus = result.message || "Test mail sent successfully.";
+    autoMailSettings.lastSentAt = new Intl.DateTimeFormat("en-SG", {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }).format(new Date());
+    persistAppData();
+    renderAutoMailPreview();
+    showToast(result.message || "Test mail sent successfully.");
+  } catch (error) {
+    showToast(error.message);
+  } finally {
+    elements.testAutoMailButton.disabled = false;
+  }
 }
 
 function renderTestingChecklist() {
@@ -2892,6 +3077,8 @@ function bindActions() {
     event.preventDefault();
     showToast("Working hours storage requires a database settings table.");
   });
+  elements.autoMailForm.addEventListener("submit", saveAutoMailSettings);
+  elements.testAutoMailButton.addEventListener("click", requestAutoMailTest);
   elements.addScheduleType.addEventListener("click", () => addSetting("type"));
   elements.addStatusSetting.addEventListener("click", () => addSetting("status"));
   elements.exportDataButton.addEventListener("click", () => {
@@ -3309,6 +3496,9 @@ function renderSelectedDate() {
   renderMetrics();
   renderDashboardPreview();
   renderSchedule();
+  if (currentSection === "autoMail") {
+    renderAutoMailPreview();
+  }
 }
 
 function toggleSidebar() {
@@ -3368,6 +3558,7 @@ function loadAppData() {
   testingChecklist = cloneData(defaultAppData.testingChecklist);
   scheduleTypes = [...new Set([...defaultScheduleTypes, ...(storedDatabase.settings?.scheduleTypes || [])])];
   scheduleStatuses = [...new Set([...defaultScheduleStatuses, ...(storedDatabase.settings?.scheduleStatuses || [])])];
+  autoMailSettings = normalizeAutoMailSettings(storedDatabase.settings?.autoMail || {});
   uiState = cloneData(storedDatabase.uiState || defaultAppData.uiState);
   localStorage.setItem(APP_DATA_KEY, JSON.stringify({
     users: dummyUsers,
@@ -3379,7 +3570,8 @@ function loadAppData() {
     testingChecklist,
     settings: {
       scheduleTypes,
-      scheduleStatuses
+      scheduleStatuses,
+      autoMail: autoMailSettings
     },
     uiState
   }));
@@ -3418,7 +3610,8 @@ function persistAppData() {
     testingChecklist,
     settings: {
       scheduleTypes,
-      scheduleStatuses
+      scheduleStatuses,
+      autoMail: autoMailSettings
     },
     uiState
   };
