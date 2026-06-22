@@ -329,7 +329,6 @@ const elements = {
   newLocation: document.getElementById("newLocation"),
   newPic: document.getElementById("newPic"),
   newContactNumber: document.getElementById("newContactNumber"),
-  newContactNumberNil: document.getElementById("newContactNumberNil"),
   newAssignedRole: document.getElementById("newAssignedRole"),
   newAssignedPerson: document.getElementById("newAssignedPerson"),
   newAssignedPersonButton: document.getElementById("newAssignedPersonButton"),
@@ -426,7 +425,6 @@ const elements = {
   editCompanyName: document.getElementById("editCompanyName"),
   editPic: document.getElementById("editPic"),
   editContactNumber: document.getElementById("editContactNumber"),
-  editContactNumberNil: document.getElementById("editContactNumberNil"),
   editLocation: document.getElementById("editLocation"),
   editProducts: document.getElementById("editProducts"),
   editAssignedRole: document.getElementById("editAssignedRole"),
@@ -565,6 +563,21 @@ function replaceSchedule(record) {
   }
 }
 
+function isDefaultScheduleValue(value) {
+  return !String(value || "").trim() || ["-", "Nil"].includes(String(value).trim());
+}
+
+function mergeScheduleResponse(payload, responseSchedule = {}) {
+  const merged = { ...payload, ...responseSchedule };
+  if (!isDefaultScheduleValue(payload.pic) && isDefaultScheduleValue(responseSchedule.pic || responseSchedule.pic_name)) {
+    merged.pic = payload.pic;
+  }
+  if (!isDefaultScheduleValue(payload.contactNumber) && isDefaultScheduleValue(responseSchedule.contactNumber || responseSchedule.contact_number)) {
+    merged.contactNumber = payload.contactNumber;
+  }
+  return merged;
+}
+
 function getSelectedDateValue() {
   return uiState.selectedDate === tbaValue ? tbaValue : elements.scheduleDate.value;
 }
@@ -589,16 +602,6 @@ function setTbaDateControl(input, checkbox, useTba) {
   input.required = !useTba;
   if (useTba) {
     input.value = "";
-  }
-}
-
-function setNilContactControl(input, checkbox, useNil, requiredWhenProvided = false) {
-  checkbox.checked = useNil;
-  input.disabled = useNil;
-  input.required = requiredWhenProvided && !useNil;
-  if (useNil) {
-    input.value = "";
-    input.classList.remove("invalid-field");
   }
 }
 
@@ -1423,7 +1426,8 @@ function prepareAddScheduleForm() {
   renderAssignedPersonOptions();
   updateTypeShortcuts();
   setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, false);
-  setNilContactControl(elements.newContactNumber, elements.newContactNumberNil, false, true);
+  elements.newContactNumber.disabled = false;
+  elements.newContactNumber.required = true;
   elements.newScheduleDate.value = "";
   elements.newInputBy.value = session.username;
 }
@@ -2166,7 +2170,7 @@ function setScheduleEditAccess(entry) {
     location: [elements.editLocation],
     products: [elements.editProducts],
     pic: [elements.editPic],
-    contactNumber: [elements.editContactNumber, elements.editContactNumberNil],
+    contactNumber: [elements.editContactNumber],
     assignedRole: [elements.editAssignedRole],
     assignedPerson: [elements.editAssignedPerson],
     priority: [elements.editPriority],
@@ -2199,10 +2203,7 @@ function openScheduleEditor() {
   elements.editPsNo.value = entry.psNo;
   elements.editCompanyName.value = entry.companyName;
   elements.editPic.value = entry.pic === "-" ? "" : entry.pic;
-  setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, !entry.contactNumber || ["-", "Nil"].includes(entry.contactNumber));
-  if (entry.contactNumber && !["-", "Nil"].includes(entry.contactNumber)) {
-    elements.editContactNumber.value = entry.contactNumber;
-  }
+  elements.editContactNumber.value = entry.contactNumber && !["-", "Nil"].includes(entry.contactNumber) ? entry.contactNumber : "";
   elements.editLocation.value = entry.location;
   elements.editProducts.value = entry.products;
   setFilterOptions(elements.editAssignedRole, assignedRoleOptions, "Optional", entry.assignedRole === "-" ? "" : entry.assignedRole);
@@ -2235,7 +2236,7 @@ async function saveScheduleChanges(event) {
     psNo: elements.editPsNo.value.trim(),
     companyName: elements.editCompanyName.value.trim(),
     pic: elements.editPic.value.trim() || "-",
-    contactNumber: elements.editContactNumberNil.checked ? "Nil" : elements.editContactNumber.value.trim() || "Nil",
+    contactNumber: elements.editContactNumber.value.trim(),
     location: elements.editLocation.value.trim(),
     products: elements.editProducts.value.trim(),
     assignedRole: assignment.assignedRole,
@@ -2244,12 +2245,14 @@ async function saveScheduleChanges(event) {
     remarks: elements.editRemarks.value.trim() || "-",
     status: entry.status
   };
+  updates.pic_name = updates.pic;
+  updates.contact_number = updates.contactNumber;
   try {
     const result = await apiRequest(`/schedules/${entry.id}`, {
       method: "PUT",
       body: JSON.stringify(updates)
     });
-    const savedSchedule = { ...updates, ...result.schedule };
+    const savedSchedule = mergeScheduleResponse(updates, result.schedule);
     replaceSchedule(savedSchedule);
     refreshScheduleViews(savedSchedule);
     showToast(`${savedSchedule.psNo} schedule details updated.`);
@@ -2611,9 +2614,6 @@ function getRequiredScheduleFields() {
     if (field.name === "date") {
       return !elements.newScheduleDateTba.checked;
     }
-    if (field.name === "contactNumber") {
-      return !elements.newContactNumberNil.checked;
-    }
     return true;
   });
 }
@@ -2769,7 +2769,7 @@ async function saveNewSchedule(event) {
     products: elements.newProducts.value.trim(),
     location: elements.newLocation.value.trim(),
     pic: elements.newPic.value.trim(),
-    contactNumber: elements.newContactNumberNil.checked ? "Nil" : elements.newContactNumber.value.trim(),
+    contactNumber: elements.newContactNumber.value.trim(),
     assignedRole: assignment.assignedRole,
     assignedPerson: assignment.assignedPerson,
     priority: elements.newPriority.value,
@@ -2778,6 +2778,8 @@ async function saveNewSchedule(event) {
     status: session.role === "Sales" ? "Submitted" : elements.newStatus.value,
     fieldSyncStatus: "Not Sent",
   };
+  record.pic_name = record.pic;
+  record.contact_number = record.contactNumber;
   if (!validateAddSchedulePayload(record)) {
     return;
   }
@@ -2786,7 +2788,7 @@ async function saveNewSchedule(event) {
       method: "POST",
       body: JSON.stringify(record)
     });
-    const savedSchedule = { ...record, ...result.schedule };
+    const savedSchedule = mergeScheduleResponse(record, result.schedule);
     replaceSchedule(savedSchedule);
     setDashboardDate(savedSchedule.date);
     renderScheduleFilterOptions();
@@ -2846,8 +2848,8 @@ function normalizeScheduleRecord(record) {
     type: normalizeScheduleType(record.type),
     assignedRole: normalizeAssignedRole(record.assignedRole) || "-",
     assignedPerson: record.assignedPerson || "-",
-    pic: record.pic || "-",
-    contactNumber: record.contactNumber || "-",
+    pic: record.pic || record.picName || record.pic_name || "-",
+    contactNumber: record.contactNumber || record.contact_number || "-",
     priority: record.priority || "Normal",
     fieldSyncStatus: record.fieldSyncStatus || "Not Sent"
   };
@@ -2978,19 +2980,6 @@ function bindActions() {
   elements.newScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.newScheduleDate, elements.newScheduleDateTba, elements.newScheduleDateTba.checked));
   elements.editScheduleDateTba.addEventListener("change", () => setTbaDateControl(elements.editScheduleDate, elements.editScheduleDateTba, elements.editScheduleDateTba.checked));
   elements.carryForwardDateTba.addEventListener("change", () => setTbaDateControl(elements.carryForwardDate, elements.carryForwardDateTba, elements.carryForwardDateTba.checked));
-  elements.newContactNumberNil.addEventListener("change", () => {
-    setNilContactControl(elements.newContactNumber, elements.newContactNumberNil, elements.newContactNumberNil.checked, true);
-    if (elements.newContactNumberNil.checked) {
-      elements.newContactNumber.classList.remove("invalid-field");
-      elements.addScheduleForm.querySelector('[data-error-for="contactNumber"]').textContent = "";
-      if (!elements.addScheduleForm.querySelector(".invalid-field")) {
-        elements.addScheduleErrorSummary.classList.add("hidden");
-      }
-    }
-  });
-  elements.editContactNumberNil.addEventListener("change", () => {
-    setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, elements.editContactNumberNil.checked);
-  });
   elements.newScheduleType.addEventListener("change", updateTypeShortcuts);
   elements.typeShortcuts.forEach((button) => {
     button.addEventListener("click", () => selectScheduleType(button.dataset.typeShortcut));
