@@ -358,7 +358,6 @@ const elements = {
   detailCarriedForwardGroup: document.getElementById("detailCarriedForwardGroup"),
   detailCarriedForwardFrom: document.getElementById("detailCarriedForwardFrom"),
   detailStatus: document.getElementById("detailStatus"),
-  detailFieldSyncStatus: document.getElementById("detailFieldSyncStatus"),
   detailProducts: document.getElementById("detailProducts"),
   detailCompany: document.getElementById("detailCompany"),
   detailLocation: document.getElementById("detailLocation"),
@@ -372,8 +371,6 @@ const elements = {
   detailCreated: document.getElementById("detailCreated"),
   detailUpdatedBy: document.getElementById("detailUpdatedBy"),
   detailUpdatedAt: document.getElementById("detailUpdatedAt"),
-  detailFieldUpdatedBy: document.getElementById("detailFieldUpdatedBy"),
-  detailFieldUpdatedAt: document.getElementById("detailFieldUpdatedAt"),
   sendToFieldPlatform: document.getElementById("sendToFieldPlatform"),
   editScheduleDetail: document.getElementById("editScheduleDetail"),
   updateScheduleStatus: document.getElementById("updateScheduleStatus"),
@@ -1223,8 +1220,14 @@ function prepareAddScheduleForm() {
 
 function renderAssignedPersonOptions() {
   const selectedRole = elements.newAssignedRole.value;
-  const people = assignmentDirectory[selectedRole] || assignedPersonOptions;
-  setMultiSelectOptions(elements.newAssignedPerson, people, getSelectedMultiValues(elements.newAssignedPerson));
+  const people = selectedRole ? assignmentDirectory[selectedRole] || assignedPersonOptions : [];
+  setMultiSelectOptions(elements.newAssignedPerson, people, selectedRole ? getSelectedMultiValues(elements.newAssignedPerson) : []);
+  elements.newAssignedPersonButton.disabled = !selectedRole;
+  if (selectedRole) {
+    elements.newAssignedPerson.classList.remove("invalid-field");
+    elements.newAssignedPersonButton.classList.remove("invalid-field");
+    elements.addScheduleForm.querySelector('[data-error-for="assignedPerson"]').textContent = "";
+  }
 }
 
 function updateTypeShortcuts() {
@@ -1784,13 +1787,6 @@ function openScheduleDetails(scheduleId) {
   elements.detailStatus.replaceChildren(
     createBadge(entry.status, statusClass(entry.status), "status-badge")
   );
-  elements.detailFieldSyncStatus.replaceChildren(
-    createBadge(
-      entry.fieldSyncStatus,
-      `sync-${entry.fieldSyncStatus.toLowerCase().replaceAll(" ", "-")}`,
-      "status-badge"
-    )
-  );
   elements.detailProducts.textContent = entry.products;
   elements.detailCompany.textContent = entry.companyName;
   elements.detailLocation.textContent = entry.location;
@@ -1804,8 +1800,6 @@ function openScheduleDetails(scheduleId) {
   elements.detailCreated.textContent = entry.createdAt;
   elements.detailUpdatedBy.textContent = entry.lastUpdatedBy;
   elements.detailUpdatedAt.textContent = entry.lastUpdatedAt;
-  elements.detailFieldUpdatedBy.textContent = entry.fieldUpdatedBy;
-  elements.detailFieldUpdatedAt.textContent = entry.fieldUpdatedAt;
   const canEdit = canEditSchedule(entry);
   const canUpdateStatus = canUpdateScheduleStatus(entry);
   elements.editScheduleDetail.classList.toggle("hidden", !canEdit);
@@ -1995,8 +1989,8 @@ function openScheduleEditor() {
   elements.editPsNo.value = entry.psNo;
   elements.editCompanyName.value = entry.companyName;
   elements.editPic.value = entry.pic === "-" ? "" : entry.pic;
-  setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, !entry.contactNumber || entry.contactNumber === "-");
-  if (entry.contactNumber && entry.contactNumber !== "-") {
+  setNilContactControl(elements.editContactNumber, elements.editContactNumberNil, !entry.contactNumber || ["-", "Nil"].includes(entry.contactNumber));
+  if (entry.contactNumber && !["-", "Nil"].includes(entry.contactNumber)) {
     elements.editContactNumber.value = entry.contactNumber;
   }
   elements.editLocation.value = entry.location;
@@ -2012,8 +2006,9 @@ function openScheduleEditor() {
 
 function renderEditAssignedPersonOptions(selectedPeople = "") {
   const selectedRole = elements.editAssignedRole.value;
-  const people = assignmentDirectory[selectedRole] || assignedPersonOptions;
-  setMultiSelectOptions(elements.editAssignedPerson, people, splitAssignedPeople(selectedPeople));
+  const people = selectedRole ? assignmentDirectory[selectedRole] || assignedPersonOptions : [];
+  setMultiSelectOptions(elements.editAssignedPerson, people, selectedRole ? splitAssignedPeople(selectedPeople) : []);
+  elements.editAssignedPersonButton.disabled = !selectedRole;
 }
 
 async function saveScheduleChanges(event) {
@@ -2030,7 +2025,7 @@ async function saveScheduleChanges(event) {
     psNo: elements.editPsNo.value.trim(),
     companyName: elements.editCompanyName.value.trim(),
     pic: elements.editPic.value.trim() || "-",
-    contactNumber: elements.editContactNumberNil.checked ? "-" : elements.editContactNumber.value.trim() || "-",
+    contactNumber: elements.editContactNumberNil.checked ? "Nil" : elements.editContactNumber.value.trim() || "Nil",
     location: elements.editLocation.value.trim(),
     products: elements.editProducts.value.trim(),
     assignedRole: assignment.assignedRole,
@@ -2428,6 +2423,21 @@ function validateAddScheduleForm() {
       firstInvalidField = firstInvalidField || element;
     }
   });
+  const referenceNumber = elements.newPsNo.value.trim();
+  if (referenceNumber && !referenceNumberPattern.test(referenceNumber)) {
+    const message = elements.addScheduleForm.querySelector('[data-error-for="psNo"]');
+    message.textContent = "Enter a valid PS, PR, or PO reference number, for example PS-12345.";
+    elements.newPsNo.classList.add("invalid-field");
+    firstInvalidField = firstInvalidField || elements.newPsNo;
+  }
+  const selectedPeople = getSelectedMultiValues(elements.newAssignedPerson);
+  if (!elements.newAssignedRole.value && selectedPeople.length) {
+    const message = elements.addScheduleForm.querySelector('[data-error-for="assignedPerson"]');
+    message.textContent = "Select an assigned role before choosing an assigned person, or leave assigned person empty.";
+    elements.newAssignedPerson.classList.add("invalid-field");
+    elements.newAssignedPersonButton.classList.add("invalid-field");
+    firstInvalidField = firstInvalidField || elements.newAssignedPerson;
+  }
   if (firstInvalidField) {
     elements.addScheduleErrorSummary.classList.remove("hidden");
     if (firstInvalidField.multiple) {
@@ -2438,6 +2448,92 @@ function validateAddScheduleForm() {
     return false;
   }
   return true;
+}
+
+function markAddScheduleFieldError(name, message) {
+  const fieldMap = {
+    date: elements.newScheduleDate,
+    requestedTime: elements.newRequestedTime,
+    type: elements.newScheduleType,
+    psNo: elements.newPsNo,
+    companyName: elements.newCompanyName,
+    products: elements.newProducts,
+    location: elements.newLocation,
+    pic: elements.newPic,
+    contactNumber: elements.newContactNumber,
+    assignedRole: elements.newAssignedRole,
+    assignedPerson: elements.newAssignedPerson,
+    priority: elements.newPriority,
+    inputBy: elements.newInputBy,
+    status: elements.newStatus
+  };
+  const field = fieldMap[name];
+  const messageElement = elements.addScheduleForm.querySelector(`[data-error-for="${name}"]`);
+  if (messageElement) {
+    messageElement.textContent = message;
+  }
+  field?.classList.add("invalid-field");
+  if (field?.multiple) {
+    getMultiSelectParts(field).button?.classList.add("invalid-field");
+  }
+  return field;
+}
+
+function validateAddSchedulePayload(record) {
+  const errors = [];
+  const addError = (name, message) => errors.push({ name, message });
+  if (!record.date) {
+    addError("date", "Schedule Date is required unless TBA is selected.");
+  } else if (record.date !== tbaValue && !/^\d{4}-\d{2}-\d{2}$/.test(record.date)) {
+    addError("date", "Enter a valid schedule date, or select TBA.");
+  }
+  if (!record.requestedTime || !requestedTimeOptions.includes(record.requestedTime)) {
+    addError("requestedTime", "Select a valid requested time.");
+  }
+  if (!record.type || !scheduleTypes.includes(record.type)) {
+    addError("type", "Select a valid schedule type.");
+  }
+  if (!record.psNo || !referenceNumberPattern.test(record.psNo)) {
+    addError("psNo", "Enter a valid PS, PR, or PO reference number, for example PS-12345.");
+  }
+  [
+    ["companyName", "Company Name"],
+    ["products", "Products / Items"],
+    ["location", "Location"],
+    ["pic", "PIC"],
+    ["contactNumber", "Contact Number"],
+    ["inputBy", "Input By"]
+  ].forEach(([name, label]) => {
+    if (!String(record[name] || "").trim()) {
+      addError(name, `${label} is required.`);
+    }
+  });
+  if (record.assignedRole && !assignedRoleOptions.includes(record.assignedRole)) {
+    addError("assignedRole", "Select a valid assigned role.");
+  }
+  if (!record.assignedRole && record.assignedPerson !== "Unassigned") {
+    addError("assignedPerson", "Select an assigned role before choosing an assigned person, or leave assigned person empty.");
+  }
+  if (!priorityOptions.includes(record.priority)) {
+    addError("priority", "Select a valid priority.");
+  }
+  if (!scheduleStatuses.includes(record.status)) {
+    addError("status", "Select a valid status.");
+  }
+  if (!errors.length) {
+    return true;
+  }
+  let firstInvalidField;
+  errors.forEach(({ name, message }) => {
+    firstInvalidField = firstInvalidField || markAddScheduleFieldError(name, message);
+  });
+  elements.addScheduleErrorSummary.classList.remove("hidden");
+  if (firstInvalidField?.multiple) {
+    getMultiSelectParts(firstInvalidField).button?.focus();
+  } else {
+    firstInvalidField?.focus();
+  }
+  return false;
 }
 
 function createScheduleId() {
@@ -2463,7 +2559,7 @@ async function saveNewSchedule(event) {
     products: elements.newProducts.value.trim(),
     location: elements.newLocation.value.trim(),
     pic: elements.newPic.value.trim(),
-    contactNumber: elements.newContactNumberNil.checked ? "-" : elements.newContactNumber.value.trim(),
+    contactNumber: elements.newContactNumberNil.checked ? "Nil" : elements.newContactNumber.value.trim(),
     assignedRole: assignment.assignedRole,
     assignedPerson: assignment.assignedPerson,
     priority: elements.newPriority.value,
@@ -2472,6 +2568,9 @@ async function saveNewSchedule(event) {
     status: session.role === "Sales" ? "Submitted" : elements.newStatus.value,
     fieldSyncStatus: "Not Sent",
   };
+  if (!validateAddSchedulePayload(record)) {
+    return;
+  }
   try {
     const result = await apiRequest("/schedules", {
       method: "POST",
@@ -2560,7 +2659,7 @@ function formatTime(value) {
 }
 
 function formatContactNumber(value) {
-  return value && value !== "-" ? value : "Nil";
+  return value && !["-", "Nil"].includes(value) ? value : "Nil";
 }
 
 function bindActions() {
