@@ -1144,6 +1144,14 @@ function normalizeAutoMailSettings(settings = {}) {
   };
 }
 
+function normalizeEmailList(value) {
+  return String(value || "")
+    .split(/[\s,;]+/)
+    .map((email) => email.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 async function loadAutoMailSettings() {
   try {
     const result = await apiRequest("/auto-mail/settings");
@@ -1204,7 +1212,7 @@ async function saveAutoMailSettings(event) {
   const settings = {
     enabled: elements.autoMailEnabled.checked,
     recipientEmail: elements.autoMailRecipient.value.trim(),
-    ccEmail: elements.autoMailCc.value.trim(),
+    ccEmail: normalizeEmailList(elements.autoMailCc.value),
     sendTime: elements.autoMailSendTime.value || "17:30",
     timezone: elements.autoMailTimezone.value.trim() || "Asia/Singapore",
     weekdaysOnly: elements.autoMailWeekdays.checked,
