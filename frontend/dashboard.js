@@ -3779,7 +3779,7 @@ function closeDeleteUserModal() {
   elements.deleteUserModal.setAttribute("aria-hidden", "true");
 }
 
-function confirmDeleteUser(event) {
+async function confirmDeleteUser(event) {
   event.preventDefault();
   if (!hasEffectivePermission("User Management")) {
     return;
@@ -3798,16 +3798,19 @@ function confirmDeleteUser(event) {
     return;
   }
 
-  // Deleted users are removed locally; inactive users remain and continue reserving their username.
-  // Later database deletion should remove the row or use deleted_at with uniqueness excluding deleted users.
-  dummyUsers = dummyUsers.filter((entry) => entry.id !== user.id);
-  rememberDeletedUsername(user.username);
-  persistUsers();
-  closeUserEditor();
-  closeResetPasswordModal();
-  closeDeleteUserModal();
-  renderUsers();
-  showToast(`${user.username} has been deleted.`);
+  try {
+    const result = await apiRequest(`/users/${user.id}`, {
+      method: "DELETE"
+    });
+    dummyUsers = dummyUsers.filter((entry) => String(entry.id) !== String(user.id));
+    closeUserEditor();
+    closeResetPasswordModal();
+    closeDeleteUserModal();
+    renderUsers();
+    showToast(result.message || `${user.username} has been deleted.`);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function rememberDeletedUsername(username) {
@@ -3831,7 +3834,7 @@ function clearResetPasswordErrors() {
   elements.confirmNewUserPasswordError.textContent = "";
 }
 
-function saveResetPassword(event) {
+async function saveResetPassword(event) {
   event.preventDefault();
   if (!hasEffectivePermission("User Management")) {
     return;
@@ -3866,11 +3869,20 @@ function saveResetPassword(event) {
     return;
   }
 
-  // Backend later must hash password before saving to database.
-  user.password = newPassword;
-  persistUsers();
-  closeResetPasswordModal();
-  showToast(`Password reset successfully for ${user.username}.`);
+  try {
+    const result = await apiRequest(`/users/${user.id}/password`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        password: newPassword
+      })
+    });
+    Object.assign(user, result.user || {});
+    renderUsers();
+    closeResetPasswordModal();
+    showToast(result.message || `Password reset successfully for ${user.username}.`);
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function openChangePasswordModal() {
