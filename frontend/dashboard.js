@@ -12,11 +12,13 @@ const roleMenus = {
   Sales: [
     { label: "Dashboard", icon: "\u25a6", section: "dashboard" },
     { label: "Add Schedule", icon: "+", section: "addSchedule" },
+    { label: "Pending Queue", icon: "\u231b", section: "pendingQueue" },
     { label: "My Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" }
   ],
   Warehouse: [
     { label: "Dashboard", icon: "\u25a6", section: "dashboard" },
     { label: "Add Schedule", icon: "+", section: "addSchedule" },
+    { label: "Pending Queue", icon: "\u231b", section: "pendingQueue" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" },
     { label: "Auto Mail", icon: "\u2709", section: "autoMail" },
     { label: "Reports", icon: "\ud83d\udcca", section: "dailySchedule" },
@@ -24,6 +26,7 @@ const roleMenus = {
   ],
   Management: [
     { label: "Dashboard", icon: "\u25a6", section: "dashboard" },
+    { label: "Pending Queue", icon: "\u231b", section: "pendingQueue" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" },
     { label: "Reports", icon: "\ud83d\udcca", section: "dailySchedule" }
   ],
@@ -33,6 +36,7 @@ const roleMenus = {
     { label: "Role Settings", icon: "\ud83d\udd11", section: "roleSettings" },
     { label: "System Settings", icon: "\u2699", section: "systemSettings" },
     { label: "Auto Mail", icon: "\u2709", section: "autoMail" },
+    { label: "Pending Queue", icon: "\u231b", section: "pendingQueue" },
     { label: "Daily Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" }
   ]
 };
@@ -417,7 +421,7 @@ const elements = {
   vendorCollectionCount: document.getElementById("vendorCollectionCount"),
   technicalCount: document.getElementById("technicalCount"),
   submittedCount: document.getElementById("submittedCount"),
-  pendingCount: document.getElementById("pendingCount"),
+  pendingQueueCount: document.getElementById("pendingQueueCount"),
   readyToShipCount: document.getElementById("readyToShipCount"),
   inProgressCount: document.getElementById("inProgressCount"),
   completedCount: document.getElementById("completedCount"),
@@ -670,8 +674,7 @@ async function apiRequest(path, options = {}) {
 }
 
 async function loadDatabaseData() {
-  const scheduleData = await apiRequest("/schedules");
-  scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
+  await loadScheduleData();
   notifications = await loadNotificationData();
   lastDataRefreshAt = new Date();
 
@@ -694,10 +697,40 @@ async function loadDatabaseData() {
 }
 
 async function loadScheduleAndNotificationData() {
-  const scheduleData = await apiRequest("/schedules");
-  scheduleRecords.splice(0, scheduleRecords.length, ...scheduleData.schedules.map(normalizeScheduleRecord));
+  await loadScheduleData();
   notifications = await loadNotificationData();
   lastDataRefreshAt = new Date();
+}
+
+async function loadScheduleData() {
+  const confirmedData = await apiRequest("/schedules");
+  const pendingData = await loadPendingQueueData();
+  const combinedSchedules = [
+    ...extractScheduleList(confirmedData),
+    ...extractScheduleList(pendingData)
+  ];
+  const uniqueSchedules = new Map();
+  combinedSchedules.forEach((schedule) => {
+    const normalized = normalizeScheduleRecord(schedule);
+    uniqueSchedules.set(normalized.id, normalized);
+  });
+  scheduleRecords.splice(0, scheduleRecords.length, ...uniqueSchedules.values());
+}
+
+async function loadPendingQueueData() {
+  try {
+    return await apiRequest("/schedules/pending-queue");
+  } catch (error) {
+    return apiRequest("/schedules?view=pending");
+  }
+}
+
+function extractScheduleList(data = {}) {
+  return data.schedules
+    || data.pendingSchedules
+    || data.pendingQueue
+    || data.records
+    || [];
 }
 
 async function refreshAuthenticatedSession() {
@@ -741,6 +774,22 @@ function mergeScheduleResponse(payload, responseSchedule = {}) {
     merged.contactNumber = payload.contactNumber;
   }
   return merged;
+}
+
+function isPendingQueueRecord(entry) {
+  return entry?.date === tbaValue
+    || entry?.requestedTime === tbaValue
+    || entry?.status === "Pending";
+}
+
+function isConfirmedScheduleRecord(entry) {
+  return !isPendingQueueRecord(entry);
+}
+
+function getRoleVisibleSchedules() {
+  return scheduleRecords.filter((entry) => (
+    canViewAllSchedules() || isCurrentUserSchedule(entry)
+  ));
 }
 
 function getSelectedDateValue() {
@@ -1081,6 +1130,19 @@ function findNotificationSchedule(notification) {
 }
 
 function openNotificationScheduleView(entry, statusFilter = "") {
+  if (entry && isPendingQueueRecord(entry)) {
+    elements.scheduleSearch.value = "";
+    elements.scheduleTypeFilter.value = "";
+    elements.scheduleStatusFilter.value = statusFilter === tbaValue ? "" : statusFilter;
+    elements.assignedRoleFilter.value = "";
+    elements.inputByFilter.value = "";
+    scheduleQuickFilter = statusFilter || "";
+    updateScheduleQuickButtons();
+    showSection("pendingQueue", "Pending Queue");
+    renderSchedule();
+    highlightNotificationSchedule(entry.id);
+    return;
+  }
   if (entry) {
     setDashboardDate(entry.date);
   }
@@ -1179,11 +1241,19 @@ function renderDateHeading() {
   elements.selectedDateLabel.textContent = label;
   const canViewAll = canViewAllSchedules();
   const isScheduleView = currentSection === "dailySchedule";
+  const isPendingQueue = currentSection === "pendingQueue";
   const isAddSchedule = currentSection === "addSchedule";
-  elements.dateSelector.classList.toggle("hidden", isAddSchedule);
+  elements.dateSelector.classList.toggle("hidden", isAddSchedule || isPendingQueue);
   if (isAddSchedule) {
     elements.dashboardTitle.textContent = "Add Schedule";
     elements.dashboardSubtitle.textContent = "Create a new office schedule job.";
+    return;
+  }
+  if (isPendingQueue) {
+    elements.dashboardTitle.textContent = "Pending Queue / Unscheduled Requests";
+    elements.dashboardSubtitle.textContent = !canViewAll
+      ? `Showing pending or TBA requests submitted by ${session.username}.`
+      : "Review requests waiting for confirmed date, time, or status.";
     return;
   }
   elements.dashboardTitle.textContent = isScheduleView
@@ -1198,6 +1268,7 @@ function renderDateHeading() {
 
 function renderMetrics() {
   const selectedEntries = getSelectedSchedule();
+  const pendingEntries = getPendingQueueSchedule();
   elements.totalScheduleCount.textContent = String(selectedEntries.length);
   elements.deliveryCount.textContent = countType(selectedEntries, "Delivery");
   elements.selfCollectionCount.textContent = countType(selectedEntries, "Customer Self-Collection");
@@ -1206,7 +1277,7 @@ function renderMetrics() {
     selectedEntries.filter((entry) => onsiteServiceTypes.includes(entry.type)).length
   );
   elements.submittedCount.textContent = countStatus(selectedEntries, "Submitted");
-  elements.pendingCount.textContent = countStatus(selectedEntries, "Pending");
+  elements.pendingQueueCount.textContent = String(pendingEntries.length);
   elements.readyToShipCount.textContent = countStatus(selectedEntries, "Ready to Ship");
   elements.inProgressCount.textContent = countStatus(selectedEntries, "In Progress");
   elements.completedCount.textContent = countStatus(selectedEntries, "Completed");
@@ -1218,7 +1289,7 @@ function renderRoleDisplay() {
   elements.profileRole.textContent = session.role;
   elements.avatar.textContent = initials(session.username);
   elements.notificationCenter.classList.toggle("hidden", !hasEffectivePermission("Manage Notifications"));
-  elements.clearLaunchDataHeaderButton.classList.toggle("hidden", !["Admin", "Management"].includes(session.role));
+  elements.clearLaunchDataHeaderButton?.classList.add("hidden");
   elements.recentUpdatesPanel.classList.add("hidden");
   elements.addScheduleButton.classList.toggle(
     "hidden",
@@ -1268,6 +1339,9 @@ function getMenuItemsForCurrentUser() {
         }
         return hasEffectivePermission("View Own Report") || canViewAll;
       }
+      if (menuItem.section === "pendingQueue") {
+        return hasEffectivePermission("View Own Report") || canViewAll;
+      }
       if (menuItem.section === "userManagement") {
         return hasEffectivePermission("User Management");
       }
@@ -1290,6 +1364,7 @@ function getMenuItemsForCurrentUser() {
     addItem({ label: "Add Schedule", icon: "+", section: "addSchedule" });
   }
   if (hasEffectivePermission("View Own Report") || hasEffectivePermission("View All Reports")) {
+    addItem({ label: "Pending Queue", icon: "\u231b", section: "pendingQueue" });
     addItem({ label: canViewAll ? "Daily Schedule" : "My Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" });
   }
   if (canViewAll) {
@@ -1321,16 +1396,19 @@ function showSection(section, menuLabel = "") {
   const isAutoMail = ["Admin", "Warehouse"].includes(session.role) && section === "autoMail";
   const isTestingChecklist = session.role === "Admin" && section === "testingChecklist";
   const isDailySchedule = section === "dailySchedule";
+  const isPendingQueue = section === "pendingQueue" && (hasEffectivePermission("View Own Report") || canViewAllSchedules());
   const isAddSchedule = hasEffectivePermission("Add Schedule") && section === "addSchedule";
   const isAdminPanel = isUserManagement || isRoleSettings || isSystemSettings || isTestingChecklist;
   const isStandalonePanel = isAdminPanel || isAutoMail;
-  currentSection = isStandalonePanel || isDailySchedule || isAddSchedule ? section : "dashboard";
+  currentSection = isStandalonePanel || isDailySchedule || isPendingQueue || isAddSchedule ? section : "dashboard";
   document.body.classList.toggle("add-schedule-view", isAddSchedule);
   activeMenuLabel = (currentSection === section ? menuLabel : "") || (
     currentSection === "dashboard"
       ? "Dashboard"
       : currentSection === "addSchedule"
         ? "Add Schedule"
+      : currentSection === "pendingQueue"
+        ? "Pending Queue"
       : currentSection === "dailySchedule"
         ? canViewAllSchedules() ? "Daily Schedule" : "My Schedule"
         : currentSection === "userManagement"
@@ -1345,7 +1423,7 @@ function showSection(section, menuLabel = "") {
   );
   elements.schedulePageHeading.classList.toggle("hidden", isStandalonePanel);
   elements.addSchedule.classList.toggle("hidden", !isAddSchedule);
-  elements.dailySchedule.classList.toggle("hidden", !isDailySchedule);
+  elements.dailySchedule.classList.toggle("hidden", !(isDailySchedule || isPendingQueue));
   elements.userManagement.classList.toggle("hidden", !isUserManagement);
   elements.roleSettings.classList.toggle("hidden", !isRoleSettings);
   elements.systemSettings.classList.toggle("hidden", !isSystemSettings);
@@ -1357,7 +1435,7 @@ function showSection(section, menuLabel = "") {
   );
   elements.addScheduleButton.classList.toggle(
     "hidden",
-    !isDailySchedule || !hasEffectivePermission("Add Schedule")
+    !(isDailySchedule || isPendingQueue) || !hasEffectivePermission("Add Schedule")
   );
   if (isAddSchedule) {
     prepareAddScheduleForm();
@@ -1366,7 +1444,12 @@ function showSection(section, menuLabel = "") {
     renderAutoMailSettings();
     loadAutoMailSettings();
   }
-  elements.scheduleHeading.textContent = canViewAllSchedules() ? "Daily Schedule" : "My Schedule";
+  if (isDailySchedule || isPendingQueue) {
+    renderSchedule();
+  }
+  elements.scheduleHeading.textContent = isPendingQueue
+    ? "Pending Queue / Unscheduled Requests"
+    : canViewAllSchedules() ? "Daily Schedule" : "My Schedule";
   if (!isRoleSettings) {
     closeRoleEditor();
     closeOverrideEditor();
@@ -1407,7 +1490,7 @@ function normalizeAutoMailSettings(settings = {}) {
     weekdaysOnly: settings.weekdayOnly ?? settings.weekdaysOnly ?? autoMailSettings.weekdaysOnly ?? defaultAutoMailSettings.weekdaysOnly,
     saturdayEnabled: settings.saturdayEnabled ?? autoMailSettings.saturdayEnabled ?? defaultAutoMailSettings.saturdayEnabled,
     saturdaySendTime: settings.saturdaySendTime || autoMailSettings.saturdaySendTime || defaultAutoMailSettings.saturdaySendTime,
-    includeTbaSchedules: settings.includeTbaSchedules ?? autoMailSettings.includeTbaSchedules ?? defaultAutoMailSettings.includeTbaSchedules,
+    includeTbaSchedules: false,
     reportDateOffsetDays: Number(settings.reportDateOffsetDays ?? autoMailSettings.reportDateOffsetDays ?? defaultAutoMailSettings.reportDateOffsetDays),
     emailSubject: settings.emailSubject || settings.subject || autoMailSettings.emailSubject || defaultAutoMailSettings.emailSubject,
     lastStatus: settings.lastStatus || autoMailSettings.lastStatus || defaultAutoMailSettings.lastStatus,
@@ -1452,7 +1535,7 @@ function renderAutoMailPreview() {
     year: "numeric"
   }).format(parseDate(previewDate));
   const previewEntries = scheduleRecords
-    .filter((entry) => entry.date === previewDate || (autoMailSettings.includeTbaSchedules && entry.date === tbaValue))
+    .filter((entry) => entry.date === previewDate && isConfirmedScheduleRecord(entry))
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
   const [hour = "17", minute = "30"] = (autoMailSettings.sendTime || "17:30").split(":");
   elements.autoMailPreviewSubject.textContent = `${autoMailSettings.emailSubject || "Datacom Daily Schedule Report"} - ${titleDate}`;
@@ -1466,6 +1549,8 @@ function renderAutoMailPreview() {
   elements.autoMailCron.textContent = `${dailyCron}${saturdayCron}`;
   elements.autoMailLastStatus.textContent = autoMailSettings.lastStatus || "Ready for backend scheduler";
   elements.autoMailLastSent.textContent = autoMailSettings.lastSentAt || "-";
+  elements.autoMailIncludeTba.checked = false;
+  elements.autoMailIncludeTba.disabled = true;
   const rows = previewEntries.slice(0, 8).map((entry) => {
     const row = document.createElement("tr");
     const statusCell = document.createElement("td");
@@ -1501,7 +1586,7 @@ async function saveAutoMailSettings(event) {
     weekdaysOnly: elements.autoMailWeekdays.checked,
     saturdayEnabled: elements.autoMailSaturdayEnabled.checked,
     saturdaySendTime: elements.autoMailSaturdayTime.value || "12:30",
-    includeTbaSchedules: elements.autoMailIncludeTba.checked,
+    includeTbaSchedules: false,
     reportDateOffsetDays: 1,
     emailSubject: elements.autoMailSubject.value.trim() || "Datacom Daily Schedule Report"
   };
@@ -1518,7 +1603,7 @@ async function saveAutoMailSettings(event) {
         weekdayOnly: settings.weekdaysOnly,
         saturdayEnabled: settings.saturdayEnabled,
         saturdaySendTime: settings.saturdaySendTime,
-        includeTbaSchedules: settings.includeTbaSchedules,
+        includeTbaSchedules: false,
         reportDateOffsetDays: settings.reportDateOffsetDays,
         emailSubject: settings.emailSubject
       })
@@ -1625,15 +1710,6 @@ function ensureResetLocalDataButton() {
   if (!maintenancePanel) {
     return;
   }
-  if (!document.getElementById("clearLaunchDataButton")) {
-    const clearButton = document.createElement("button");
-    clearButton.type = "button";
-    clearButton.id = "clearLaunchDataButton";
-    clearButton.className = "secondary-button maintenance-button";
-    clearButton.textContent = "Clear All Records";
-    clearButton.addEventListener("click", clearLaunchData);
-    maintenancePanel.appendChild(clearButton);
-  }
   if (!document.getElementById("resetLocalDataButton")) {
     const resetButton = document.createElement("button");
     resetButton.type = "button";
@@ -1672,7 +1748,8 @@ function restoreUiState() {
     all: "All Schedules",
     Delivery: "Deliveries",
     "Customer Self-Collection": "Customer Self-Collection",
-    "Collection at Vendor Place": "Collection at Vendor Place"
+    "Collection at Vendor Place": "Collection at Vendor Place",
+    pendingQueue: "Pending / TBA Requests"
   };
   elements.currentFilterLabel.textContent = displayLabels[previewFilter] || previewFilter;
   elements.metricCards.querySelectorAll("[data-filter]").forEach((card) => {
@@ -2191,6 +2268,8 @@ function filterPreviewSchedules(entries) {
     case "Completed":
     case "Carried Forward":
       return entries.filter((entry) => entry.status === previewFilter);
+    case "pendingQueue":
+      return getPendingQueueSchedule();
     default:
       return entries;
   }
@@ -2202,7 +2281,8 @@ function applyPreviewFilter(filter) {
     all: "All Schedules",
     Delivery: "Deliveries",
     "Customer Self-Collection": "Customer Self-Collection",
-    "Collection at Vendor Place": "Collection at Vendor Place"
+    "Collection at Vendor Place": "Collection at Vendor Place",
+    pendingQueue: "Pending / TBA Requests"
   };
   elements.currentFilterLabel.textContent = displayLabels[filter] || filter;
   elements.metricCards.querySelectorAll("[data-filter]").forEach((card) => {
@@ -2240,6 +2320,11 @@ function createPreviewRow(entry) {
 function renderSchedule() {
   const fragment = document.createDocumentFragment();
   const selectedEntries = getFilteredSchedule();
+  const queueView = currentSection === "pendingQueue";
+  elements.scheduleHeading.textContent = queueView
+    ? "Pending Queue / Unscheduled Requests"
+    : canViewAllSchedules() ? "Daily Schedule" : "My Schedule";
+  elements.printDailySchedule.textContent = queueView ? "Print Pending Queue" : "Print Daily Schedule";
   selectedEntries.forEach((entry) => fragment.appendChild(createScheduleRow(entry)));
   elements.scheduleRows.replaceChildren();
   elements.scheduleRows.appendChild(fragment);
@@ -2258,7 +2343,9 @@ function renderTimeline(entries) {
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
   const fragment = document.createDocumentFragment();
   timelineEntries.forEach((entry) => fragment.appendChild(createTimelineEntry(entry)));
-  elements.timelineDateHeading.textContent = formatDate(getSelectedDateValue());
+  elements.timelineDateHeading.textContent = currentSection === "pendingQueue"
+    ? "Pending / TBA Requests"
+    : formatDate(getSelectedDateValue());
   elements.timelineRows.replaceChildren(fragment);
   elements.emptyTimeline.classList.toggle("hidden", timelineEntries.length !== 0);
 }
@@ -2471,9 +2558,13 @@ function updateAuditFields(entry) {
 
 function refreshScheduleViews(entry) {
   persistAppData();
-  renderMetrics();
-  renderDashboardPreview();
-  renderSchedule();
+  if (currentSection === "pendingQueue" && isConfirmedScheduleRecord(entry)) {
+    setDashboardDate(entry.date);
+    showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
+  } else if (currentSection === "dailySchedule" && isPendingQueueRecord(entry)) {
+    showSection("pendingQueue", "Pending Queue");
+  }
+  renderSelectedDate();
   openScheduleDetails(entry.id);
 }
 
@@ -2801,7 +2892,7 @@ function printSelectedDateSchedule() {
     showToast("Export Reports permission is required.");
     return;
   }
-  const entries = getSelectedSchedule()
+  const entries = getScheduleListSource()
     .slice()
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
   const rows = entries.map((entry) => {
@@ -2809,7 +2900,9 @@ function printSelectedDateSchedule() {
     getScheduleExportCells(entry).forEach((value) => row.appendChild(createCell(value)));
     return row;
   });
-  elements.printScheduleDate.textContent = formatDate(getSelectedDateValue());
+  elements.printScheduleDate.textContent = currentSection === "pendingQueue"
+    ? "Pending / TBA Requests"
+    : formatDate(getSelectedDateValue());
   elements.printScheduleRows.replaceChildren(...rows);
   document.body.classList.add("printing-daily-schedule");
   window.print();
@@ -2848,7 +2941,8 @@ function exportFilteredScheduleCsv() {
   const downloadLink = document.createElement("a");
   const downloadUrl = URL.createObjectURL(blob);
   downloadLink.href = downloadUrl;
-  downloadLink.download = `daily-schedule-${getSelectedDateValue().toLowerCase()}.csv`;
+  const exportSlug = currentSection === "pendingQueue" ? "pending-queue" : `daily-schedule-${getSelectedDateValue().toLowerCase()}`;
+  downloadLink.download = `${exportSlug}.csv`;
   document.body.appendChild(downloadLink);
   downloadLink.click();
   downloadLink.remove();
@@ -2935,16 +3029,23 @@ function getOffsetDateString(value, offsetDays) {
 
 function getSelectedSchedule() {
   const selectedDate = getSelectedDateValue();
-  return scheduleRecords.filter((entry) => {
+  return getRoleVisibleSchedules().filter((entry) => {
     const matchesDate = entry.date === selectedDate;
-    const submittedByUser = entry.inputBy.toLowerCase() === session.username.toLowerCase();
-    return matchesDate && (canViewAllSchedules() || submittedByUser);
+    return matchesDate && isConfirmedScheduleRecord(entry);
   });
+}
+
+function getPendingQueueSchedule() {
+  return getRoleVisibleSchedules().filter(isPendingQueueRecord);
+}
+
+function getScheduleListSource() {
+  return currentSection === "pendingQueue" ? getPendingQueueSchedule() : getSelectedSchedule();
 }
 
 function getFilteredSchedule() {
   const query = elements.scheduleSearch.value.trim().toLowerCase();
-  const entries = getSelectedSchedule().filter((entry) => {
+  const entries = getScheduleListSource().filter((entry) => {
     const searchableValues = [
       entry.psNo,
       entry.companyName,
@@ -2993,9 +3094,15 @@ function updateScheduleQuickButtons() {
 function applyScheduleQuickFilter(filter) {
   scheduleQuickFilter = filter;
   if (filter === tbaValue) {
-    setDashboardDate(tbaValue);
-    renderSelectedDate();
+    showSection("pendingQueue", "Pending Queue");
+    elements.scheduleStatusFilter.value = "";
+    renderSchedule();
+  } else if (filter === "Pending") {
+    showSection("pendingQueue", "Pending Queue");
+    elements.scheduleStatusFilter.value = "Pending";
+    renderSchedule();
   } else if (["today", "tomorrow"].includes(filter)) {
+    showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
     const selectedDate = new Date();
     if (filter === "tomorrow") {
       selectedDate.setDate(selectedDate.getDate() + 1);
@@ -3003,6 +3110,7 @@ function applyScheduleQuickFilter(filter) {
     setDashboardDate(localDateString(selectedDate));
     renderSelectedDate();
   } else {
+    showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
     elements.scheduleStatusFilter.value = filter;
     renderSchedule();
   }
@@ -3230,11 +3338,16 @@ async function saveNewSchedule(event) {
     });
     const savedSchedule = mergeScheduleResponse(record, result.schedule);
     replaceSchedule(savedSchedule);
-    setDashboardDate(savedSchedule.date);
     renderScheduleFilterOptions();
     clearScheduleFilters();
-    renderSelectedDate();
-    showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
+    if (isPendingQueueRecord(savedSchedule)) {
+      showSection("pendingQueue", "Pending Queue");
+      renderSchedule();
+    } else {
+      setDashboardDate(savedSchedule.date);
+      renderSelectedDate();
+      showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
+    }
     showToast(`${savedSchedule.psNo} schedule saved successfully.`);
     await refreshNotifications();
   } catch (error) {
@@ -3356,18 +3469,24 @@ function bindActions() {
   elements.nextDay.addEventListener("click", () => changeSelectedDay(1));
   elements.selectTbaDate.addEventListener("click", () => {
     scheduleQuickFilter = tbaValue;
-    setDashboardDate(tbaValue);
+    showSection("pendingQueue", "Pending Queue");
     updateScheduleQuickButtons();
-    renderSelectedDate();
+    renderSchedule();
     persistAppData();
   });
   elements.menuToggle.addEventListener("click", toggleSidebar);
   elements.sidebarBackdrop.addEventListener("click", closeSidebar);
-  elements.clearLaunchDataHeaderButton.addEventListener("click", clearLaunchData);
+  elements.clearLaunchDataHeaderButton?.addEventListener("click", clearLaunchData);
   elements.addScheduleButton.addEventListener("click", () => showSection("addSchedule", "Add Schedule"));
   elements.metricCards.addEventListener("click", (event) => {
     const card = event.target.closest("[data-filter]");
     if (card) {
+      if (card.dataset.sectionTarget === "pendingQueue") {
+        applyPreviewFilter(card.dataset.filter);
+        showSection("pendingQueue", "Pending Queue");
+        renderSchedule();
+        return;
+      }
       applyPreviewFilter(card.dataset.filter);
     }
   });
@@ -3375,6 +3494,12 @@ function bindActions() {
     const card = event.target.closest("[data-filter]");
     if (card && ["Enter", " "].includes(event.key)) {
       event.preventDefault();
+      if (card.dataset.sectionTarget === "pendingQueue") {
+        applyPreviewFilter(card.dataset.filter);
+        showSection("pendingQueue", "Pending Queue");
+        renderSchedule();
+        return;
+      }
       applyPreviewFilter(card.dataset.filter);
     }
   });

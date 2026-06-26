@@ -78,7 +78,6 @@
           <h1 id="dashboardTitle">Dashboard</h1>
           <p class="subtitle" id="dashboardSubtitle">Monitor scheduled work and manage activity.</p>
         </div>
-        <button class="secondary-button hidden" id="clearLaunchDataHeaderButton" type="button">Clear All Records</button>
         <div class="date-selector">
           <span class="selector-label">Schedule Date</span>
           <strong id="selectedDateLabel"></strong>
@@ -142,11 +141,11 @@
             </div>
             <span class="metric-icon" aria-hidden="true">&#9202;</span>
           </article>
-          <article class="metric-card pending" data-filter="Pending" tabindex="0" role="button" aria-pressed="false" title="Waiting for arrangement, customer confirmation, vendor update, or TBA schedule details.">
+          <article class="metric-card pending" data-filter="pendingQueue" data-section-target="pendingQueue" tabindex="0" role="button" aria-pressed="false" title="Pending status, TBA date, or TBA requested time records.">
             <div>
-              <p>Pending</p>
-              <strong id="pendingCount">0</strong>
-              <small>Awaiting arrangement</small>
+              <p>Pending / TBA Requests</p>
+              <strong id="pendingQueueCount">0</strong>
+              <small>Unscheduled requests</small>
             </div>
             <span class="metric-icon" aria-hidden="true">&#9202;</span>
           </article>
@@ -871,7 +870,7 @@
                 <input id="autoMailIncludeTba" type="checkbox">
                 <span>
                   Include TBA schedules
-                  <small>Add schedules without confirmed dates into the email.</small>
+                  <small>Disabled: Pending and TBA records are excluded from daily schedule email.</small>
                 </span>
               </label>
               <div class="form-actions">
@@ -1397,6 +1396,6 @@
   </script>
   <!-- ========== END AUTH TOKEN INTERCEPTOR ========== -->
 
-  <script src="dashboard.js?v=20260621-clean-field-details"></script>
+  <script src="dashboard.js?v=20260626-remove-clear-records"></script>
 </body>
 </html>
