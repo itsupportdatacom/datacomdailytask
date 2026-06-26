@@ -1295,6 +1295,48 @@ body.add-schedule-view .date-selector {
   line-height: 1.45;
 }
 
+.important-user-entry-row td {
+  height: auto;
+  padding-top: 16px;
+  padding-bottom: 16px;
+  vertical-align: top;
+  background: #f8fbfe;
+}
+
+.important-user-entry-row select,
+.important-user-entry-row input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--white);
+  color: var(--text);
+  font: inherit;
+}
+
+.important-user-entry-row input[readonly] {
+  color: #60778d;
+  background: #f3f7fb;
+}
+
+.important-user-permissions {
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  gap: 9px;
+  margin-bottom: 0;
+}
+
+.important-user-entry-row .permission-option {
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.important-user-entry-row .primary-button {
+  width: 100%;
+  min-height: 42px;
+  white-space: nowrap;
+}
+
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(290px, 1fr));
@@ -1957,14 +1999,16 @@ td.assigned-role {
 
 .timeline-list {
   position: relative;
-  padding-left: 92px;
+  display: grid;
+  gap: 14px;
+  padding-left: 0;
 }
 
 .timeline-list::before {
   position: absolute;
   top: 8px;
   bottom: 8px;
-  left: 72px;
+  left: 168px;
   width: 2px;
   background: #dae7f2;
   content: "";
@@ -1972,25 +2016,29 @@ td.assigned-role {
 
 .timeline-entry {
   position: relative;
-  margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: 136px minmax(0, 1fr);
+  gap: 28px;
+  align-items: stretch;
 }
 
 .timeline-time {
-  position: absolute;
-  top: 17px;
-  right: calc(100% + 32px);
-  width: 60px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-height: 60px;
+  padding-top: 17px;
   color: #516b83;
   font-size: 13px;
   font-weight: 700;
   text-align: right;
-  white-space: nowrap;
+  line-height: 1.35;
 }
 
 .timeline-entry::before {
   position: absolute;
   top: 21px;
-  left: -25px;
+  left: 162px;
   width: 12px;
   height: 12px;
   border: 3px solid var(--white);
@@ -2013,6 +2061,7 @@ td.assigned-role {
 }
 
 .timeline-card {
+  min-width: 0;
   width: 100%;
   padding: 15px 17px;
   border: 1px solid #e0e8f0;
@@ -2048,31 +2097,34 @@ td.assigned-role {
 }
 
 .timeline-card-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(170px, max-content) minmax(120px, 1fr);
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
 }
 
 .timeline-card-reference {
+  justify-self: end;
   color: var(--navy);
   font-size: 14px;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .timeline-card h4 {
   margin: 0 0 9px;
   color: var(--ink);
   font-size: 15px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .timeline-card-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  flex-wrap: wrap;
-  justify-content: space-between;
   gap: 10px;
   color: #60778d;
   font-size: 13px;
@@ -2336,6 +2388,41 @@ td.assigned-role {
   grid-column: auto;
 }
 
+.password-field {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #60778d;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  background: #edf4fb;
+  color: var(--navy);
+  outline: none;
+}
+
 .reset-password-form input.invalid-field {
   border-color: #c93645;
   background: #fff8f9;
@@ -2568,6 +2655,10 @@ td.assigned-role {
     padding: 0 18px 20px;
   }
 
+  .important-user-permissions {
+    grid-template-columns: 1fr;
+  }
+
   .add-schedule-form {
     grid-template-columns: 1fr;
     padding: 0 18px 20px;
@@ -2605,6 +2696,7 @@ td.assigned-role {
   }
 
   .timeline-list {
+    gap: 12px;
     padding-left: 0;
   }
 
@@ -2614,10 +2706,25 @@ td.assigned-role {
   }
 
   .timeline-time {
-    position: static;
-    display: block;
-    width: auto;
-    margin-bottom: 7px;
+    min-height: 0;
+    padding-top: 0;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .timeline-entry {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .timeline-card-top,
+  .timeline-card-footer {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .timeline-card-reference {
+    justify-self: start;
     text-align: left;
   }
 

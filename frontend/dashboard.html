@@ -613,6 +613,7 @@
             </div>
           </div>
           <div class="user-table-container">
+            <form id="importantUserForm"></form>
             <table class="override-table">
               <thead>
                 <tr>
@@ -623,6 +624,25 @@
                   <th>Actions</th>
                 </tr>
               </thead>
+              <tbody>
+                <tr class="important-user-entry-row">
+                  <td>
+                    <select id="importantUserSelect" form="importantUserForm" aria-label="Select username" required></select>
+                  </td>
+                  <td>
+                    <input id="importantUserBaseRole" form="importantUserForm" type="text" aria-label="Base role" placeholder="Base role" readonly>
+                  </td>
+                  <td>
+                    <div class="permission-options important-user-permissions" id="importantUserPermissionOptions"></div>
+                  </td>
+                  <td>
+                    <input id="importantUserStatus" form="importantUserForm" type="text" aria-label="Status" placeholder="Status" readonly>
+                  </td>
+                  <td>
+                    <button class="primary-button" form="importantUserForm" type="submit">Assign User</button>
+                  </td>
+                </tr>
+              </tbody>
               <tbody id="overrideRows"></tbody>
             </table>
           </div>
@@ -1099,7 +1119,9 @@
         <button class="secondary-button" id="editScheduleDetail" type="button">Edit Schedule</button>
         <button class="secondary-button" id="updateScheduleStatus" type="button">Update Status</button>
         <button class="secondary-button" id="carryForwardSchedule" type="button">Carry Forward</button>
+        <button class="secondary-button hidden" id="approveScheduleChanges" type="button">Approve Changes</button>
         <button class="primary-button" id="sendToFieldPlatform" type="button">Send to Field Platform</button>
+        <button class="danger-button hidden" id="deleteScheduleDetail" type="button">Delete Schedule</button>
         <button class="secondary-button" id="printScheduleDetails" type="button">Print Job Details</button>
         <button class="secondary-button" id="closeScheduleDetails" type="button">Close</button>
       </footer>
@@ -1165,12 +1187,22 @@
         <p class="carry-forward-note workflow-wide">Set a new password for <strong id="resetPasswordUsername"></strong>.</p>
         <label class="workflow-wide">
           New Password
-          <input id="newUserPassword" type="password" autocomplete="new-password" required>
+          <span class="password-field">
+            <input id="newUserPassword" type="password" autocomplete="new-password" required>
+            <button class="password-toggle" id="toggleNewUserPassword" type="button" aria-label="Show new password" aria-pressed="false">
+              &#128065;
+            </button>
+          </span>
           <small class="reset-password-error" id="newUserPasswordError" role="alert"></small>
         </label>
         <label class="workflow-wide">
           Confirm New Password
-          <input id="confirmNewUserPassword" type="password" autocomplete="new-password" required>
+          <span class="password-field">
+            <input id="confirmNewUserPassword" type="password" autocomplete="new-password" required>
+            <button class="password-toggle" id="toggleConfirmNewUserPassword" type="button" aria-label="Show confirm new password" aria-pressed="false">
+              &#128065;
+            </button>
+          </span>
           <small class="reset-password-error" id="confirmNewUserPasswordError" role="alert"></small>
         </label>
         <div class="workflow-actions workflow-wide">

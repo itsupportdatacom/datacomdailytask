@@ -42,61 +42,198 @@ const rolePermissions = [
     role: "Sales",
     viewOwnReport: true,
     viewAllReports: false,
+    addSchedule: true,
+    editSchedule: true,
+    deleteSchedule: false,
     scheduleArrangement: false,
     updateStatus: false,
+    reassignJob: false,
+    approveScheduleChanges: false,
+    exportReports: false,
+    viewAuditLogs: false,
     userManagement: false,
+    roleManagement: false,
     systemSettings: false,
+    fieldPlatformAccess: false,
+    overrideLockedSchedule: false,
+    manageNotifications: false,
     additional: "Dashboard Access, Add Schedule"
   },
   {
     role: "Warehouse",
     viewOwnReport: true,
     viewAllReports: true,
+    addSchedule: true,
+    editSchedule: true,
+    deleteSchedule: false,
     scheduleArrangement: true,
     updateStatus: true,
+    reassignJob: true,
+    approveScheduleChanges: false,
+    exportReports: false,
+    viewAuditLogs: false,
     userManagement: false,
+    roleManagement: false,
     systemSettings: false,
+    fieldPlatformAccess: true,
+    overrideLockedSchedule: false,
+    manageNotifications: false,
     additional: "Dashboard Access, Add Schedule, View Daily Schedule, Edit Schedule"
   },
   {
     role: "Management",
     viewOwnReport: true,
     viewAllReports: true,
+    addSchedule: false,
+    editSchedule: false,
+    deleteSchedule: false,
     scheduleArrangement: false,
     updateStatus: false,
+    reassignJob: false,
+    approveScheduleChanges: false,
+    exportReports: true,
+    viewAuditLogs: true,
     userManagement: false,
+    roleManagement: false,
     systemSettings: false,
+    fieldPlatformAccess: false,
+    overrideLockedSchedule: false,
+    manageNotifications: false,
     additional: "Dashboard Access, View Daily Schedule, View Summary"
   },
   {
     role: "Admin",
     viewOwnReport: true,
     viewAllReports: true,
+    addSchedule: true,
+    editSchedule: true,
+    deleteSchedule: true,
     scheduleArrangement: true,
     updateStatus: true,
+    reassignJob: true,
+    approveScheduleChanges: true,
+    exportReports: true,
+    viewAuditLogs: true,
     userManagement: true,
+    roleManagement: true,
     systemSettings: true,
+    fieldPlatformAccess: true,
+    overrideLockedSchedule: true,
+    manageNotifications: true,
     additional: "Full access to all features"
   }
 ];
 
-const editablePermissionFields = [
+const allPermissionFields = [
   { key: "viewOwnReport", label: "View Own Report" },
   { key: "viewAllReports", label: "View All Reports" },
+  { key: "addSchedule", label: "Add Schedule" },
+  { key: "editSchedule", label: "Edit Schedule" },
+  { key: "deleteSchedule", label: "Delete Schedule" },
   { key: "scheduleArrangement", label: "Schedule Arrangement" },
   { key: "updateStatus", label: "Update Status" },
+  { key: "reassignJob", label: "Reassign Job" },
+  { key: "approveScheduleChanges", label: "Approve Schedule Changes" },
+  { key: "exportReports", label: "Export Reports" },
+  { key: "viewAuditLogs", label: "View Audit Logs" },
   { key: "userManagement", label: "User Management" },
-  { key: "systemSettings", label: "System Settings" }
+  { key: "roleManagement", label: "Role Management" },
+  { key: "systemSettings", label: "System Settings" },
+  { key: "fieldPlatformAccess", label: "Field Platform Access" },
+  { key: "overrideLockedSchedule", label: "Override Locked Schedule" },
+  { key: "manageNotifications", label: "Manage Notifications" }
 ];
+
+const editablePermissionFields = allPermissionFields.filter((field) => [
+  "viewOwnReport",
+  "viewAllReports",
+  "scheduleArrangement",
+  "updateStatus",
+  "userManagement",
+  "systemSettings"
+].includes(field.key));
 
 const overridePermissionOptions = [
-  "View Team Report",
-  "Edit Own Schedule",
-  "Export Reports",
-  "Schedule Arrangement"
+  ...allPermissionFields.map((field) => field.label)
 ];
 
+function getCurrentUserOverride() {
+  return userOverrides.find((entry) => (
+    String(entry.userId || "") === String(session?.id || "")
+    || String(entry.username || "").toLowerCase() === String(session?.username || "").toLowerCase()
+  ));
+}
+
+function getCurrentPermissionSet() {
+  const override = getCurrentUserOverride();
+  if (override) {
+    return new Set(override.permissions || []);
+  }
+  if (Array.isArray(session?.permissions)) {
+    return new Set(session.permissions);
+  }
+  const permissions = new Set();
+  const role = rolePermissions.find((entry) => entry.role === session?.role);
+  if (role) {
+    allPermissionFields.forEach((field) => {
+      if (role[field.key]) {
+        permissions.add(field.label);
+      }
+    });
+  }
+  return permissions;
+}
+
+function hasEffectivePermission(permissionName) {
+  return getCurrentPermissionSet().has(permissionName);
+}
+
+function refreshCurrentSessionPermissions() {
+  session.permissions = [...getCurrentPermissionSet()];
+  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+function canViewAllSchedules() {
+  return hasEffectivePermission("View All Reports");
+}
+
+function isLockedSchedule(entry) {
+  return ["Completed", "Cancelled"].includes(entry?.status);
+}
+
+function applyPermissionVisibility() {
+  const canManageNotifications = hasEffectivePermission("Manage Notifications");
+  document.querySelectorAll("#systemSettings .settings-card:not(.maintenance-settings)").forEach((card) => {
+    card.classList.toggle("hidden", !hasEffectivePermission("System Settings"));
+  });
+  document.querySelector("#systemSettings .maintenance-settings")?.classList.toggle(
+    "hidden",
+    !hasEffectivePermission("System Settings") && !hasEffectivePermission("Export Reports") && !hasEffectivePermission("View Audit Logs")
+  );
+  elements.notificationCenter.classList.toggle("hidden", !canManageNotifications);
+  elements.notificationButton.disabled = !canManageNotifications;
+  elements.markAllNotificationsRead.classList.toggle("hidden", !canManageNotifications);
+  elements.clearNotifications.classList.toggle("hidden", !canManageNotifications);
+  elements.printDailySchedule.classList.toggle("hidden", !hasEffectivePermission("Export Reports"));
+  elements.exportScheduleCsv.classList.toggle("hidden", !hasEffectivePermission("Export Reports"));
+  elements.exportSchedulePdf.classList.toggle("hidden", !hasEffectivePermission("Export Reports"));
+  elements.exportDataButton.classList.toggle("hidden", !hasEffectivePermission("Export Reports"));
+  elements.auditLogButton.classList.toggle("hidden", !hasEffectivePermission("View Audit Logs"));
+}
+
+async function syncUserPermissionOverride(userId, permissions) {
+  try {
+    return await apiRequest(`/user-permissions/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify({ permissions })
+    });
+  } catch (error) {
+    return null;
+  }
+}
+
 let userOverrides = [];
+let userOverridesLoaded = false;
 
 const defaultScheduleTypes = [
   "Delivery",
@@ -380,6 +517,11 @@ const elements = {
   editingOverrideId: document.getElementById("editingOverrideId"),
   overridePermissionOptions: document.getElementById("overridePermissionOptions"),
   cancelOverrideEdit: document.getElementById("cancelOverrideEdit"),
+  importantUserForm: document.getElementById("importantUserForm"),
+  importantUserSelect: document.getElementById("importantUserSelect"),
+  importantUserBaseRole: document.getElementById("importantUserBaseRole"),
+  importantUserPermissionOptions: document.getElementById("importantUserPermissionOptions"),
+  importantUserStatus: document.getElementById("importantUserStatus"),
   companyProfileForm: document.getElementById("companyProfileForm"),
   scheduleTypeList: document.getElementById("scheduleTypeList"),
   addScheduleType: document.getElementById("addScheduleType"),
@@ -414,6 +556,8 @@ const elements = {
   editScheduleDetail: document.getElementById("editScheduleDetail"),
   updateScheduleStatus: document.getElementById("updateScheduleStatus"),
   carryForwardSchedule: document.getElementById("carryForwardSchedule"),
+  approveScheduleChanges: document.getElementById("approveScheduleChanges"),
+  deleteScheduleDetail: document.getElementById("deleteScheduleDetail"),
   printScheduleDetails: document.getElementById("printScheduleDetails"),
   closeScheduleDetails: document.getElementById("closeScheduleDetails"),
   closeDetailsIcon: document.getElementById("closeDetailsIcon"),
@@ -457,6 +601,8 @@ const elements = {
   resetPasswordUsername: document.getElementById("resetPasswordUsername"),
   newUserPassword: document.getElementById("newUserPassword"),
   confirmNewUserPassword: document.getElementById("confirmNewUserPassword"),
+  toggleNewUserPassword: document.getElementById("toggleNewUserPassword"),
+  toggleConfirmNewUserPassword: document.getElementById("toggleConfirmNewUserPassword"),
   newUserPasswordError: document.getElementById("newUserPasswordError"),
   confirmNewUserPasswordError: document.getElementById("confirmNewUserPasswordError"),
   cancelResetPassword: document.getElementById("cancelResetPassword"),
@@ -529,13 +675,21 @@ async function loadDatabaseData() {
   notifications = await loadNotificationData();
   lastDataRefreshAt = new Date();
 
-  if (session.role === "Admin") {
-    const [userData, permissionData] = await Promise.all([
-      apiRequest("/users"),
-      apiRequest("/role-permissions")
-    ]);
-    dummyUsers = userData.users;
-    rolePermissions.splice(0, rolePermissions.length, ...permissionData.permissions);
+  if (hasEffectivePermission("User Management") || hasEffectivePermission("Role Management")) {
+    try {
+      const [userData, permissionData] = await Promise.all([
+        apiRequest("/users"),
+        apiRequest("/role-permissions")
+      ]);
+      dummyUsers = userData.users;
+      rolePermissions.splice(0, rolePermissions.length, ...permissionData.permissions);
+      const userPermissionData = await apiRequest("/user-permissions");
+      userOverrides = userPermissionData.userPermissions.filter((override) => override.permissions.length);
+      userOverridesLoaded = true;
+    } catch (error) {
+      userOverrides = cloneData(readStoredAppData().userOverrides || userOverrides);
+      userOverridesLoaded = true;
+    }
   }
 }
 
@@ -546,7 +700,16 @@ async function loadScheduleAndNotificationData() {
   lastDataRefreshAt = new Date();
 }
 
+async function refreshAuthenticatedSession() {
+  const sessionData = await apiRequest("/session");
+  session = { ...session, ...(sessionData.user || {}) };
+  refreshCurrentSessionPermissions();
+}
+
 async function loadNotificationData() {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    return [];
+  }
   try {
     const notificationData = await apiRequest("/notifications");
     return notificationData.notifications || [];
@@ -614,7 +777,7 @@ async function initializeDashboard() {
     return;
   }
   try {
-    await apiRequest("/session");
+    await refreshAuthenticatedSession();
     await loadDatabaseData();
   } catch (error) {
     localStorage.removeItem(SESSION_KEY);
@@ -636,6 +799,7 @@ async function initializeDashboard() {
   renderSystemSettings();
   renderTestingChecklist();
   renderNotifications();
+  applyPermissionVisibility();
   updateLastUpdatedLabels();
   bindActions();
   startAutoRefresh();
@@ -672,10 +836,16 @@ async function autoRefreshDashboardData() {
   }
   autoRefreshInFlight = true;
   try {
+    await refreshAuthenticatedSession();
+    if (!canViewAllSchedules() && activeMenuLabel === "Daily Schedule") {
+      activeMenuLabel = "My Schedule";
+    }
     await loadScheduleAndNotificationData();
     renderScheduleFilterOptions();
     renderSelectedDate();
     renderNotifications();
+    renderSidebar();
+    applyPermissionVisibility();
     updateLastUpdatedLabels();
   } catch (error) {
     console.warn("Auto-refresh failed:", error.message);
@@ -690,6 +860,10 @@ function startAutoRefresh() {
 }
 
 function renderNotifications() {
+  elements.notificationCenter.classList.toggle("hidden", !hasEffectivePermission("Manage Notifications"));
+  if (!hasEffectivePermission("Manage Notifications")) {
+    return;
+  }
   const unreadCount = notifications.filter((notification) => !notification.read).length;
   elements.notificationCount.textContent = String(unreadCount);
   elements.notificationCount.classList.toggle("hidden", unreadCount === 0);
@@ -779,6 +953,10 @@ function renderRecentUpdates() {
 }
 
 function toggleNotificationPanel() {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    showToast("Manage Notifications permission is required.");
+    return;
+  }
   const opening = elements.notificationPanel.classList.contains("hidden");
   elements.notificationPanel.classList.toggle("hidden", !opening);
   elements.notificationButton.setAttribute("aria-expanded", String(opening));
@@ -837,6 +1015,10 @@ function handleNotificationKeydown(event) {
 }
 
 async function markNotificationRead(notification) {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    showToast("Manage Notifications permission is required.");
+    return;
+  }
   if (notification.read) {
     return;
   }
@@ -850,6 +1032,9 @@ async function markNotificationRead(notification) {
 }
 
 async function refreshNotifications() {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    return;
+  }
   try {
     const notificationData = await apiRequest("/notifications");
     notifications = notificationData.notifications;
@@ -860,6 +1045,10 @@ async function refreshNotifications() {
 }
 
 async function markAllNotificationsRead() {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    showToast("Manage Notifications permission is required.");
+    return;
+  }
   const unreadUpdates = notifications.filter((notification) => !notification.read);
   if (!unreadUpdates.length) {
     return;
@@ -902,7 +1091,7 @@ function openNotificationScheduleView(entry, statusFilter = "") {
   elements.inputByFilter.value = "";
   scheduleQuickFilter = statusFilter;
   updateScheduleQuickButtons();
-  showSection("dailySchedule", session.role === "Sales" ? "My Schedule" : "Daily Schedule");
+  showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
   renderSelectedDate();
   if (entry) {
     highlightNotificationSchedule(entry.id);
@@ -927,7 +1116,7 @@ function navigateFromNotification(notification) {
   const schedule = findNotificationSchedule(notification);
   closeNotificationPanel();
 
-  if (label.includes("user") && label.includes("pending approval") && session.role === "Admin") {
+  if (label.includes("user") && label.includes("pending approval") && hasEffectivePermission("User Management")) {
     showSection("userManagement", "User Management");
     return;
   }
@@ -951,6 +1140,10 @@ function navigateFromNotification(notification) {
 }
 
 async function clearAllNotifications() {
+  if (!hasEffectivePermission("Manage Notifications")) {
+    showToast("Manage Notifications permission is required.");
+    return;
+  }
   try {
     await apiRequest("/notifications", { method: "DELETE" });
     notifications = [];
@@ -984,7 +1177,7 @@ function renderDateHeading() {
         year: "numeric"
       }).format(parseDate(selectedDate));
   elements.selectedDateLabel.textContent = label;
-  const isSales = session.role === "Sales";
+  const canViewAll = canViewAllSchedules();
   const isScheduleView = currentSection === "dailySchedule";
   const isAddSchedule = currentSection === "addSchedule";
   elements.dateSelector.classList.toggle("hidden", isAddSchedule);
@@ -994,9 +1187,9 @@ function renderDateHeading() {
     return;
   }
   elements.dashboardTitle.textContent = isScheduleView
-    ? `${session.role === "Sales" ? "My Schedule" : "Daily Schedule"} - ${label}`
-    : `${isSales ? "My Schedule Overview" : "Daily Operations Overview"} - ${label}`;
-  elements.dashboardSubtitle.textContent = isSales
+    ? `${canViewAll ? "Daily Schedule" : "My Schedule"} - ${label}`
+    : `${canViewAll ? "Daily Operations Overview" : "My Schedule Overview"} - ${label}`;
+  elements.dashboardSubtitle.textContent = !canViewAll
     ? `Showing schedules submitted by ${session.username} for ${label}.`
     : isScheduleView
       ? `Review scheduled activities for ${label}.`
@@ -1024,21 +1217,22 @@ function renderRoleDisplay() {
   elements.profileName.textContent = session.username;
   elements.profileRole.textContent = session.role;
   elements.avatar.textContent = initials(session.username);
-  elements.notificationCenter.classList.remove("hidden");
+  elements.notificationCenter.classList.toggle("hidden", !hasEffectivePermission("Manage Notifications"));
   elements.clearLaunchDataHeaderButton.classList.toggle("hidden", !["Admin", "Management"].includes(session.role));
   elements.recentUpdatesPanel.classList.add("hidden");
   elements.addScheduleButton.classList.toggle(
     "hidden",
-    !["Sales", "Warehouse"].includes(session.role)
+    !hasEffectivePermission("Add Schedule")
   );
-  elements.scheduleHeading.textContent = session.role === "Sales" ? "My Schedule" : "Daily Schedule";
+  elements.scheduleHeading.textContent = canViewAllSchedules() ? "Daily Schedule" : "My Schedule";
   renderSidebar();
+  applyPermissionVisibility();
   showSection("dashboard");
 }
 
 function renderSidebar() {
   const fragment = document.createDocumentFragment();
-  roleMenus[session.role].forEach((menuItem) => {
+  getMenuItemsForCurrentUser().forEach((menuItem) => {
     const link = document.createElement("a");
     link.className = "nav-item";
     link.href = "#";
@@ -1058,25 +1252,87 @@ function renderSidebar() {
   elements.sidebarNav.replaceChildren(fragment);
 }
 
+function getMenuItemsForCurrentUser() {
+  const canViewAll = canViewAllSchedules();
+  const items = [...(roleMenus[session.role] || roleMenus.Sales)]
+    .filter((menuItem) => {
+      if (menuItem.section === "addSchedule") {
+        return hasEffectivePermission("Add Schedule");
+      }
+      if (menuItem.section === "dailySchedule") {
+        if (menuItem.label === "Reports") {
+          return canViewAll;
+        }
+        if (menuItem.label === "My Schedule") {
+          return !canViewAll && hasEffectivePermission("View Own Report");
+        }
+        return hasEffectivePermission("View Own Report") || canViewAll;
+      }
+      if (menuItem.section === "userManagement") {
+        return hasEffectivePermission("User Management");
+      }
+      if (menuItem.section === "roleSettings") {
+        return hasEffectivePermission("Role Management");
+      }
+      if (menuItem.section === "systemSettings") {
+        return hasEffectivePermission("System Settings")
+          || hasEffectivePermission("Export Reports")
+          || hasEffectivePermission("View Audit Logs");
+      }
+      return true;
+    });
+  const addItem = (item) => {
+    if (!items.some((menuItem) => menuItem.section === item.section && menuItem.label === item.label)) {
+      items.push(item);
+    }
+  };
+  if (hasEffectivePermission("Add Schedule")) {
+    addItem({ label: "Add Schedule", icon: "+", section: "addSchedule" });
+  }
+  if (hasEffectivePermission("View Own Report") || hasEffectivePermission("View All Reports")) {
+    addItem({ label: canViewAll ? "Daily Schedule" : "My Schedule", icon: "\ud83d\udcc5", section: "dailySchedule" });
+  }
+  if (canViewAll) {
+    addItem({ label: "Reports", icon: "\ud83d\udcca", section: "dailySchedule" });
+  }
+  if (hasEffectivePermission("User Management")) {
+    addItem({ label: "User Management", icon: "\ud83d\udc65", section: "userManagement" });
+  }
+  if (hasEffectivePermission("Role Management")) {
+    addItem({ label: "Role Settings", icon: "\ud83d\udd11", section: "roleSettings" });
+  }
+  if (hasEffectivePermission("System Settings")) {
+    addItem({ label: "System Settings", icon: "\u2699", section: "systemSettings" });
+  }
+  if (!hasEffectivePermission("System Settings") && (hasEffectivePermission("Export Reports") || hasEffectivePermission("View Audit Logs"))) {
+    addItem({ label: hasEffectivePermission("View Audit Logs") ? "Audit Logs" : "Export Reports", icon: "\ud83d\udcca", section: "systemSettings" });
+  }
+  return items;
+}
+
 function showSection(section, menuLabel = "") {
-  const isUserManagement = session.role === "Admin" && section === "userManagement";
-  const isRoleSettings = session.role === "Admin" && section === "roleSettings";
-  const isSystemSettings = session.role === "Admin" && section === "systemSettings";
+  const isUserManagement = hasEffectivePermission("User Management") && section === "userManagement";
+  const isRoleSettings = hasEffectivePermission("Role Management") && section === "roleSettings";
+  const isSystemSettings = (
+    hasEffectivePermission("System Settings")
+    || hasEffectivePermission("Export Reports")
+    || hasEffectivePermission("View Audit Logs")
+  ) && section === "systemSettings";
   const isAutoMail = ["Admin", "Warehouse"].includes(session.role) && section === "autoMail";
   const isTestingChecklist = session.role === "Admin" && section === "testingChecklist";
   const isDailySchedule = section === "dailySchedule";
-  const isAddSchedule = ["Sales", "Warehouse"].includes(session.role) && section === "addSchedule";
+  const isAddSchedule = hasEffectivePermission("Add Schedule") && section === "addSchedule";
   const isAdminPanel = isUserManagement || isRoleSettings || isSystemSettings || isTestingChecklist;
   const isStandalonePanel = isAdminPanel || isAutoMail;
   currentSection = isStandalonePanel || isDailySchedule || isAddSchedule ? section : "dashboard";
   document.body.classList.toggle("add-schedule-view", isAddSchedule);
-  activeMenuLabel = menuLabel || (
+  activeMenuLabel = (currentSection === section ? menuLabel : "") || (
     currentSection === "dashboard"
       ? "Dashboard"
       : currentSection === "addSchedule"
         ? "Add Schedule"
       : currentSection === "dailySchedule"
-        ? session.role === "Sales" ? "My Schedule" : "Daily Schedule"
+        ? canViewAllSchedules() ? "Daily Schedule" : "My Schedule"
         : currentSection === "userManagement"
           ? "User Management"
           : currentSection === "roleSettings"
@@ -1101,7 +1357,7 @@ function showSection(section, menuLabel = "") {
   );
   elements.addScheduleButton.classList.toggle(
     "hidden",
-    !isDailySchedule || !["Sales", "Warehouse"].includes(session.role)
+    !isDailySchedule || !hasEffectivePermission("Add Schedule")
   );
   if (isAddSchedule) {
     prepareAddScheduleForm();
@@ -1110,13 +1366,14 @@ function showSection(section, menuLabel = "") {
     renderAutoMailSettings();
     loadAutoMailSettings();
   }
-  elements.scheduleHeading.textContent = session.role === "Sales" ? "My Schedule" : "Daily Schedule";
+  elements.scheduleHeading.textContent = canViewAllSchedules() ? "Daily Schedule" : "My Schedule";
   if (!isRoleSettings) {
     closeRoleEditor();
     closeOverrideEditor();
   }
   renderDateHeading();
   renderSidebar();
+  applyPermissionVisibility();
 }
 
 function renderSystemSettings() {
@@ -1620,19 +1877,35 @@ function renderPermissions() {
   rolePermissions.forEach((permission) => {
     const row = document.createElement("tr");
     row.appendChild(createCell(permission.role, "role-name"));
-    row.appendChild(createPermissionCell(permission.viewOwnReport));
-    row.appendChild(createPermissionCell(permission.viewAllReports));
-    row.appendChild(createPermissionCell(permission.scheduleArrangement));
-    row.appendChild(createPermissionCell(permission.updateStatus));
-    row.appendChild(createPermissionCell(permission.userManagement));
-    row.appendChild(createPermissionCell(permission.systemSettings));
+    editablePermissionFields.forEach((field) => {
+      row.appendChild(createPermissionCell(permission[field.key]));
+    });
     row.appendChild(createCell(permission.additional, "additional-permissions"));
     const actionsCell = document.createElement("td");
     actionsCell.appendChild(createAccessButton("Edit", "edit-role", permission.role));
     row.appendChild(actionsCell);
     fragment.appendChild(row);
   });
+  renderPermissionTableHeaders();
   elements.permissionRows.replaceChildren(fragment);
+}
+
+function renderPermissionTableHeaders() {
+  const headerRow = document.querySelector(".permission-table thead tr");
+  if (!headerRow) {
+    return;
+  }
+  const headers = [
+    "Role",
+    ...editablePermissionFields.map((field) => field.label),
+    "Additional Permissions",
+    "Actions"
+  ];
+  headerRow.replaceChildren(...headers.map((label) => {
+    const header = document.createElement("th");
+    header.textContent = label;
+    return header;
+  }));
 }
 
 function createPermissionCell(allowed) {
@@ -1661,12 +1934,36 @@ function renderOverrides() {
     const actions = document.createElement("div");
     actions.className = "user-actions";
     actions.appendChild(createAccessButton("Edit Access", "edit-override", override.id));
-    actions.appendChild(createAccessButton("Remove Override", "remove-override", override.id, "danger"));
     actionsCell.appendChild(actions);
     row.appendChild(actionsCell);
     fragment.appendChild(row);
   });
   elements.overrideRows.replaceChildren(fragment);
+  renderImportantUserForm();
+}
+
+function renderImportantUserForm() {
+  const activeUsers = dummyUsers.filter((user) => user.status === "Active");
+  const options = [
+    new Option("Select user", ""),
+    ...activeUsers.map((user) => new Option(`${user.username} (${user.role})`, user.id))
+  ];
+  elements.importantUserSelect.replaceChildren(...options);
+  elements.importantUserPermissionOptions.replaceChildren(...overridePermissionOptions.map((permission) => (
+    createPermissionCheckbox(permission, permission, false)
+  )));
+  updateImportantUserDetails();
+}
+
+function updateImportantUserDetails() {
+  const user = dummyUsers.find((entry) => entry.id === elements.importantUserSelect.value);
+  elements.importantUserBaseRole.value = user?.role || "";
+  elements.importantUserStatus.value = user?.status || "";
+  const assigned = userOverrides.find((entry) => entry.userId === user?.id || entry.username === user?.username);
+  const assignedPermissions = new Set(assigned?.permissions || []);
+  elements.importantUserPermissionOptions.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+    checkbox.checked = assignedPermissions.has(checkbox.value);
+  });
 }
 
 function createAccessButton(label, action, value, modifier = "") {
@@ -1704,7 +2001,7 @@ async function saveRolePermissions(event) {
   if (!role) {
     return;
   }
-  const updates = {};
+  const updates = Object.fromEntries(allPermissionFields.map((field) => [field.key, Boolean(role[field.key])]));
   editablePermissionFields.forEach((field) => {
     const checkbox = elements.rolePermissionOptions.querySelector(`[name="${field.key}"]`);
     updates[field.key] = checkbox.checked;
@@ -1715,7 +2012,10 @@ async function saveRolePermissions(event) {
       body: JSON.stringify(updates)
     });
     Object.assign(role, updates);
+    refreshCurrentSessionPermissions();
     renderPermissions();
+    renderSelectedDate();
+    renderRoleDisplay();
     closeRoleEditor();
     showToast(`${role.role} permissions updated.`);
   } catch (error) {
@@ -1742,14 +2042,62 @@ function closeOverrideEditor() {
   elements.overrideEditor.classList.add("hidden");
 }
 
-function saveOverride(event) {
+async function saveOverride(event) {
   event.preventDefault();
   const override = userOverrides.find((entry) => entry.id === elements.editingOverrideId.value);
   if (!override) {
     return;
   }
+  const permissions = getCheckedPermissions(elements.overridePermissionOptions);
+  const result = await syncUserPermissionOverride(override.userId, permissions);
+  Object.assign(override, result?.userPermission || { permissions });
+  refreshCurrentSessionPermissions();
+  persistAppData();
+  renderOverrides();
+  renderSelectedDate();
+  renderSidebar();
+  applyPermissionVisibility();
   closeOverrideEditor();
-  showToast("User permission overrides require a database table before they can be saved.");
+  showToast(`${override.username} access updated.`);
+}
+
+async function saveImportantUser(event) {
+  event.preventDefault();
+  const user = dummyUsers.find((entry) => entry.id === elements.importantUserSelect.value);
+  const permissions = getCheckedPermissions(elements.importantUserPermissionOptions);
+  if (!user) {
+    showToast("Select a username.");
+    return;
+  }
+  const result = await syncUserPermissionOverride(user.id, permissions);
+  const override = result?.userPermission || {
+    id: `OVR-${user.id}`,
+    userId: user.id,
+    username: user.username,
+    baseRole: user.role,
+    permissions,
+    status: user.status
+  };
+  const existing = userOverrides.find((entry) => entry.userId === user.id || entry.username === user.username);
+  if (existing) {
+    Object.assign(existing, override);
+  } else {
+    userOverrides.push(override);
+  }
+  elements.importantUserForm.reset();
+  updateImportantUserDetails();
+  refreshCurrentSessionPermissions();
+  persistAppData();
+  renderOverrides();
+  renderSelectedDate();
+  renderSidebar();
+  applyPermissionVisibility();
+  showToast(`${user.username} added to individual access.`);
+}
+
+function getCheckedPermissions(container) {
+  return Array.from(container.querySelectorAll("input[type='checkbox']:checked"))
+    .map((input) => input.value);
 }
 
 function createPermissionCheckbox(label, value, checked) {
@@ -2031,7 +2379,9 @@ function openScheduleDetails(scheduleId) {
   elements.editScheduleDetail.classList.toggle("hidden", !canEdit);
   elements.updateScheduleStatus.classList.toggle("hidden", !canUpdateStatus);
   elements.carryForwardSchedule.classList.toggle("hidden", !canCarryForwardSchedule(entry));
-  elements.sendToFieldPlatform.classList.toggle("hidden", !["Admin", "Warehouse"].includes(session.role));
+  elements.approveScheduleChanges.classList.toggle("hidden", !hasEffectivePermission("Approve Schedule Changes"));
+  elements.sendToFieldPlatform.classList.toggle("hidden", !hasEffectivePermission("Field Platform Access"));
+  elements.deleteScheduleDetail.classList.toggle("hidden", !hasEffectivePermission("Delete Schedule"));
   elements.scheduleDetailsModal.classList.remove("hidden");
   elements.scheduleDetailsModal.setAttribute("aria-hidden", "false");
   elements.closeDetailsIcon.focus();
@@ -2132,25 +2482,16 @@ function isCurrentUserSchedule(entry) {
 }
 
 function getEditableScheduleFields(entry) {
-  if (session.role === "Admin") {
-    return "all";
-  }
-  if (session.role === "Warehouse") {
-    return ["Submitted", "Pending", "Ready to Ship", "In Progress", "Carried Forward"].includes(entry.status) ? "all" : [];
-  }
-  if (session.role !== "Sales" || !isCurrentUserSchedule(entry)) {
+  if (isLockedSchedule(entry) && !hasEffectivePermission("Override Locked Schedule")) {
     return [];
   }
-  const salesEditRules = {
-    Submitted: "all",
-    Pending: ["date", "requestedTime", "companyName", "location", "products", "remarks"],
-    "In Progress": ["remarks", "contactNumber"],
-    "Ready to Ship": ["remarks"],
-    "Carried Forward": ["date", "requestedTime", "remarks"],
-    Completed: [],
-    Cancelled: []
-  };
-  return salesEditRules[entry.status] || [];
+  if (hasEffectivePermission("Reassign Job") && !hasEffectivePermission("Edit Schedule")) {
+    return ["assignedRole", "assignedPerson"];
+  }
+  if (hasEffectivePermission("Edit Schedule")) {
+    return "all";
+  }
+  return [];
 }
 
 function canEditSchedule(entry) {
@@ -2159,14 +2500,20 @@ function canEditSchedule(entry) {
 }
 
 function canUpdateScheduleStatus(entry) {
-  if (session.role === "Admin") {
+  if (isLockedSchedule(entry) && !hasEffectivePermission("Override Locked Schedule")) {
+    return false;
+  }
+  if (hasEffectivePermission("Update Status")) {
     return true;
   }
-  return session.role === "Warehouse" && !["Completed", "Cancelled"].includes(entry.status);
+  return false;
 }
 
 function canCarryForwardSchedule(entry) {
-  return ["Admin", "Warehouse"].includes(session.role) && !["Completed", "Cancelled"].includes(entry.status);
+  if (isLockedSchedule(entry) && !hasEffectivePermission("Override Locked Schedule")) {
+    return false;
+  }
+  return hasEffectivePermission("Schedule Arrangement") && !["Completed", "Cancelled"].includes(entry.status);
 }
 
 function setScheduleEditAccess(entry) {
@@ -2189,7 +2536,9 @@ function setScheduleEditAccess(entry) {
     remarks: [elements.editRemarks]
   };
   Object.entries(fieldMap).forEach(([fieldName, controls]) => {
-    const canEditField = editableAll || editableSet.has(fieldName);
+    const isAssignmentField = fieldName === "assignedRole" || fieldName === "assignedPerson";
+    const canEditField = (editableAll || editableSet.has(fieldName))
+      && (!isAssignmentField || hasEffectivePermission("Reassign Job"));
     controls.forEach((control) => {
       control.disabled = !canEditField;
     });
@@ -2376,6 +2725,50 @@ async function sendSelectedScheduleToFieldPlatform() {
   }
 }
 
+async function deleteSelectedSchedule() {
+  const entry = getSelectedScheduleRecord();
+  if (!entry || !hasEffectivePermission("Delete Schedule")) {
+    return;
+  }
+  if (!window.confirm(`Delete schedule ${entry.psNo}? This cannot be undone.`)) {
+    return;
+  }
+  try {
+    await apiRequest(`/schedules/${entry.id}`, { method: "DELETE" });
+    const index = scheduleRecords.findIndex((schedule) => schedule.id === entry.id);
+    if (index !== -1) {
+      scheduleRecords.splice(index, 1);
+    }
+    closeScheduleDetails();
+    persistAppData();
+    renderMetrics();
+    renderDashboardPreview();
+    renderSchedule();
+    showToast(`${entry.psNo} schedule deleted.`);
+    await refreshNotifications();
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function approveSelectedScheduleChanges() {
+  const entry = getSelectedScheduleRecord();
+  if (!entry || !hasEffectivePermission("Approve Schedule Changes")) {
+    return;
+  }
+  try {
+    const result = await apiRequest(`/schedules/${entry.id}/approve`, { method: "PATCH" });
+    if (result.schedule) {
+      replaceSchedule(result.schedule);
+      refreshScheduleViews(result.schedule);
+    }
+    showToast(`${entry.psNo} schedule changes approved.`);
+    await refreshNotifications();
+  } catch (error) {
+    showToast("Backend approval API is not connected yet.");
+  }
+}
+
 function printSelectedScheduleDetails() {
   if (!getSelectedScheduleRecord()) {
     return;
@@ -2404,6 +2797,10 @@ function getScheduleExportCells(entry) {
 }
 
 function printSelectedDateSchedule() {
+  if (!hasEffectivePermission("Export Reports")) {
+    showToast("Export Reports permission is required.");
+    return;
+  }
   const entries = getSelectedSchedule()
     .slice()
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
@@ -2423,6 +2820,10 @@ function escapeCsvValue(value) {
 }
 
 function exportFilteredScheduleCsv() {
+  if (!hasEffectivePermission("Export Reports")) {
+    showToast("Export Reports permission is required.");
+    return;
+  }
   const headers = [
     "Date",
     "Time",
@@ -2453,6 +2854,27 @@ function exportFilteredScheduleCsv() {
   downloadLink.remove();
   URL.revokeObjectURL(downloadUrl);
   showToast(`${rows.length} filtered schedule record(s) exported to CSV.`);
+}
+
+function exportFilteredSchedulePdf() {
+  if (!hasEffectivePermission("Export Reports")) {
+    showToast("Export Reports permission is required.");
+    return;
+  }
+  printSelectedDateSchedule();
+}
+
+async function viewAuditLogs() {
+  if (!hasEffectivePermission("View Audit Logs")) {
+    showToast("View Audit Logs permission is required.");
+    return;
+  }
+  try {
+    await apiRequest("/audit-logs");
+    showToast("Audit logs loaded from backend.");
+  } catch (error) {
+    showToast("Backend audit log API is not connected yet.");
+  }
 }
 
 function createCell(value, className = "") {
@@ -2516,7 +2938,7 @@ function getSelectedSchedule() {
   return scheduleRecords.filter((entry) => {
     const matchesDate = entry.date === selectedDate;
     const submittedByUser = entry.inputBy.toLowerCase() === session.username.toLowerCase();
-    return matchesDate && (session.role !== "Sales" || submittedByUser);
+    return matchesDate && (canViewAllSchedules() || submittedByUser);
   });
 }
 
@@ -2812,7 +3234,7 @@ async function saveNewSchedule(event) {
     renderScheduleFilterOptions();
     clearScheduleFilters();
     renderSelectedDate();
-    showSection("dailySchedule", session.role === "Sales" ? "My Schedule" : "Daily Schedule");
+    showSection("dailySchedule", canViewAllSchedules() ? "Daily Schedule" : "My Schedule");
     showToast(`${savedSchedule.psNo} schedule saved successfully.`);
     await refreshNotifications();
   } catch (error) {
@@ -2981,7 +3403,7 @@ function bindActions() {
   });
   elements.printDailySchedule.addEventListener("click", printSelectedDateSchedule);
   elements.exportScheduleCsv.addEventListener("click", exportFilteredScheduleCsv);
-  elements.exportSchedulePdf.addEventListener("click", () => showToast("PDF export will be added later."));
+  elements.exportSchedulePdf.addEventListener("click", exportFilteredSchedulePdf);
   elements.addScheduleForm.addEventListener("submit", saveNewSchedule);
   elements.clearAddScheduleForm.addEventListener("click", prepareAddScheduleForm);
   elements.newAssignedRole.addEventListener("change", renderAssignedPersonOptions);
@@ -3067,6 +3489,8 @@ function bindActions() {
   elements.resetPasswordForm.addEventListener("submit", saveResetPassword);
   elements.cancelResetPassword.addEventListener("click", closeResetPasswordModal);
   elements.closeResetPasswordIcon.addEventListener("click", closeResetPasswordModal);
+  elements.toggleNewUserPassword.addEventListener("click", () => togglePasswordVisibility(elements.newUserPassword, elements.toggleNewUserPassword, "new password"));
+  elements.toggleConfirmNewUserPassword.addEventListener("click", () => togglePasswordVisibility(elements.confirmNewUserPassword, elements.toggleConfirmNewUserPassword, "confirm new password"));
   [elements.newUserPassword, elements.confirmNewUserPassword].forEach((field) => {
     field.addEventListener("input", clearResetPasswordErrors);
   });
@@ -3097,6 +3521,8 @@ function bindActions() {
   elements.rolePermissionForm.addEventListener("submit", saveRolePermissions);
   elements.cancelRoleEdit.addEventListener("click", closeRoleEditor);
   elements.overrideRows.addEventListener("click", handleOverrideAction);
+  elements.importantUserForm.addEventListener("submit", saveImportantUser);
+  elements.importantUserSelect.addEventListener("change", updateImportantUserDetails);
   elements.overrideForm.addEventListener("submit", saveOverride);
   elements.cancelOverrideEdit.addEventListener("click", closeOverrideEditor);
   elements.testingChecklistRows.addEventListener("input", handleChecklistInput);
@@ -3114,17 +3540,17 @@ function bindActions() {
   elements.addScheduleType.addEventListener("click", () => addSetting("type"));
   elements.addStatusSetting.addEventListener("click", () => addSetting("status"));
   elements.exportDataButton.addEventListener("click", () => {
-    showToast("Data export will be enabled once backend storage is connected.");
+    exportFilteredScheduleCsv();
   });
-  elements.auditLogButton.addEventListener("click", () => {
-    showToast("Audit log history will be available with backend tracking.");
-  });
+  elements.auditLogButton.addEventListener("click", viewAuditLogs);
   elements.editScheduleDetail.addEventListener("click", openScheduleEditor);
   elements.scheduleEditForm.addEventListener("submit", saveScheduleChanges);
   elements.cancelScheduleEdit.addEventListener("click", closeDetailWorkflows);
   elements.sendToFieldPlatform.addEventListener("click", sendSelectedScheduleToFieldPlatform);
   elements.updateScheduleStatus.addEventListener("click", () => openStatusEditor());
   elements.carryForwardSchedule.addEventListener("click", openCarryForwardModal);
+  elements.approveScheduleChanges.addEventListener("click", approveSelectedScheduleChanges);
+  elements.deleteScheduleDetail.addEventListener("click", deleteSelectedSchedule);
   elements.statusUpdateForm.addEventListener("submit", saveScheduleStatus);
   elements.cancelStatusUpdate.addEventListener("click", closeDetailWorkflows);
   elements.carryForwardForm.addEventListener("submit", saveCarryForwardSchedule);
@@ -3136,6 +3562,12 @@ function bindActions() {
     }
   });
   elements.printScheduleDetails.addEventListener("click", printSelectedScheduleDetails);
+  window.addEventListener("focus", autoRefreshDashboardData);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      autoRefreshDashboardData();
+    }
+  });
   window.addEventListener("afterprint", () => {
     document.body.classList.remove("printing-schedule-details", "printing-daily-schedule");
   });
@@ -3181,15 +3613,15 @@ function addSetting(category) {
 
 function handlePermissionAction(event) {
   const button = event.target.closest("[data-access-action='edit-role']");
-  if (!button || session.role !== "Admin") {
+  if (!button || !hasEffectivePermission("Role Management")) {
     return;
   }
   openRoleEditor(button.dataset.accessValue);
 }
 
-function handleOverrideAction(event) {
+async function handleOverrideAction(event) {
   const button = event.target.closest("[data-access-action]");
-  if (!button || session.role !== "Admin") {
+  if (!button || !hasEffectivePermission("Role Management")) {
     return;
   }
   const override = userOverrides.find((entry) => entry.id === button.dataset.accessValue);
@@ -3203,13 +3635,21 @@ function handleOverrideAction(event) {
   if (!window.confirm(`Remove permission override for "${override.username}"?`)) {
     return;
   }
+  await syncUserPermissionOverride(override.userId, []);
+  userOverrides = userOverrides.filter((entry) => entry.id !== override.id);
+  refreshCurrentSessionPermissions();
   closeOverrideEditor();
-  showToast("User permission overrides require a database table before they can be changed.");
+  persistAppData();
+  renderOverrides();
+  renderSelectedDate();
+  renderSidebar();
+  applyPermissionVisibility();
+  showToast(`${override.username} removed from individual access.`);
 }
 
 async function handleUserAction(event) {
   const button = event.target.closest("[data-user-action]");
-  if (!button || session.role !== "Admin") {
+  if (!button || !hasEffectivePermission("User Management")) {
     return;
   }
   const user = dummyUsers.find((entry) => entry.id === button.dataset.userId);
@@ -3274,10 +3714,11 @@ function closeUserEditor() {
 }
 
 function openResetPasswordModal(user) {
-  if (session.role !== "Admin") {
+  if (!hasEffectivePermission("User Management")) {
     return;
   }
   elements.resetPasswordForm.reset();
+  resetPasswordVisibility();
   clearResetPasswordErrors();
   elements.resetPasswordUserId.value = user.id;
   elements.resetPasswordUsername.textContent = user.username;
@@ -3289,13 +3730,32 @@ function openResetPasswordModal(user) {
 function closeResetPasswordModal() {
   elements.resetPasswordForm.reset();
   elements.resetPasswordUserId.value = "";
+  resetPasswordVisibility();
   clearResetPasswordErrors();
   elements.resetPasswordModal.classList.add("hidden");
   elements.resetPasswordModal.setAttribute("aria-hidden", "true");
 }
 
+function togglePasswordVisibility(input, button, label) {
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  button.setAttribute("aria-pressed", String(!visible));
+  button.setAttribute("aria-label", `${visible ? "Show" : "Hide"} ${label}`);
+}
+
+function resetPasswordVisibility() {
+  [
+    [elements.newUserPassword, elements.toggleNewUserPassword, "new password"],
+    [elements.confirmNewUserPassword, elements.toggleConfirmNewUserPassword, "confirm new password"]
+  ].forEach(([input, button, label]) => {
+    input.type = "password";
+    button.setAttribute("aria-pressed", "false");
+    button.setAttribute("aria-label", `Show ${label}`);
+  });
+}
+
 function openDeleteUserModal(user) {
-  if (session.role !== "Admin") {
+  if (!hasEffectivePermission("User Management")) {
     return;
   }
   const isCurrentAdmin = user.role === "Admin"
@@ -3321,7 +3781,7 @@ function closeDeleteUserModal() {
 
 function confirmDeleteUser(event) {
   event.preventDefault();
-  if (session.role !== "Admin") {
+  if (!hasEffectivePermission("User Management")) {
     return;
   }
   const user = dummyUsers.find((entry) => entry.id === elements.deleteUserId.value);
@@ -3373,7 +3833,7 @@ function clearResetPasswordErrors() {
 
 function saveResetPassword(event) {
   event.preventDefault();
-  if (session.role !== "Admin") {
+  if (!hasEffectivePermission("User Management")) {
     return;
   }
   clearResetPasswordErrors();
@@ -3562,6 +4022,14 @@ function createDefaultAppData(users = defaultAppData.users) {
   return database;
 }
 
+function readStoredAppData() {
+  try {
+    return JSON.parse(localStorage.getItem(APP_DATA_KEY) || "null") || {};
+  } catch (error) {
+    return {};
+  }
+}
+
 function loadAppData() {
   let storedDatabase;
   try {
@@ -3586,7 +4054,8 @@ function loadAppData() {
     rolePermissions.length,
     ...cloneData(storedDatabase.rolePermissions || defaultAppData.rolePermissions)
   );
-  userOverrides = cloneData(defaultAppData.userOverrides);
+  userOverrides = cloneData(storedDatabase.userOverrides || defaultAppData.userOverrides);
+  userOverridesLoaded = true;
   testingChecklist = cloneData(defaultAppData.testingChecklist);
   scheduleTypes = [...new Set([...defaultScheduleTypes, ...(storedDatabase.settings?.scheduleTypes || [])])];
   scheduleStatuses = [...new Set([...defaultScheduleStatuses, ...(storedDatabase.settings?.scheduleStatuses || [])])];
