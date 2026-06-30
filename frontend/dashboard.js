@@ -285,6 +285,7 @@ const requestedTimeOptions = [
   "17:00"
 ];
 const referenceNumberPattern = /\b(?:PS|PR|PO)-[A-Z0-9-]+\b/i;
+const noReferenceNumberValue = "NA";
 let scheduleTypes = [...defaultScheduleTypes];
 let scheduleStatuses = [...defaultScheduleStatuses];
 const assignedRoleOptions = ["Driver", "Technician", "Engineer", "All Team"];
@@ -3166,6 +3167,19 @@ function getRequiredScheduleFields() {
   });
 }
 
+function isValidScheduleReference(referenceNumber, scheduleType) {
+  const value = String(referenceNumber || "").trim();
+  return referenceNumberPattern.test(value)
+    || (scheduleType === "Site Survey" && value.toUpperCase() === noReferenceNumberValue);
+}
+
+function getReferenceNumberValidationMessage(scheduleType) {
+  if (scheduleType === "Site Survey") {
+    return "Enter a valid PS, PR, or PO reference number, or enter NA if none is available.";
+  }
+  return "Enter a valid PS, PR, or PO reference number, for example PS-12345.";
+}
+
 function validateAddScheduleForm() {
   clearAddScheduleErrors();
   let firstInvalidField;
@@ -3182,9 +3196,9 @@ function validateAddScheduleForm() {
     }
   });
   const referenceNumber = elements.newPsNo.value.trim();
-  if (referenceNumber && !referenceNumberPattern.test(referenceNumber)) {
+  if (referenceNumber && !isValidScheduleReference(referenceNumber, elements.newScheduleType.value)) {
     const message = elements.addScheduleForm.querySelector('[data-error-for="psNo"]');
-    message.textContent = "Enter a valid PS, PR, or PO reference number, for example PS-12345.";
+    message.textContent = getReferenceNumberValidationMessage(elements.newScheduleType.value);
     elements.newPsNo.classList.add("invalid-field");
     firstInvalidField = firstInvalidField || elements.newPsNo;
   }
@@ -3251,8 +3265,8 @@ function validateAddSchedulePayload(record) {
   if (!record.type || !scheduleTypes.includes(record.type)) {
     addError("type", "Select a valid schedule type.");
   }
-  if (!record.psNo || !referenceNumberPattern.test(record.psNo)) {
-    addError("psNo", "Enter a valid PS, PR, or PO reference number, for example PS-12345.");
+  if (!record.psNo || !isValidScheduleReference(record.psNo, record.type)) {
+    addError("psNo", getReferenceNumberValidationMessage(record.type));
   }
   [
     ["companyName", "Company Name"],
@@ -3308,11 +3322,14 @@ async function saveNewSchedule(event) {
     return;
   }
   const assignment = getScheduleAssignmentPayload(elements.newAssignedRole, elements.newAssignedPerson);
+  const referenceNumber = elements.newPsNo.value.trim();
   const record = {
     date: elements.newScheduleDateTba.checked ? tbaValue : elements.newScheduleDate.value,
     requestedTime: elements.newRequestedTime.value,
     type: elements.newScheduleType.value,
-    psNo: elements.newPsNo.value.trim(),
+    psNo: elements.newScheduleType.value === "Site Survey" && referenceNumber.toUpperCase() === noReferenceNumberValue
+      ? noReferenceNumberValue
+      : referenceNumber,
     companyName: elements.newCompanyName.value.trim(),
     products: elements.newProducts.value.trim(),
     location: elements.newLocation.value.trim(),
