@@ -3167,17 +3167,14 @@ function getRequiredScheduleFields() {
   });
 }
 
-function isValidScheduleReference(referenceNumber, scheduleType) {
+function isValidScheduleReference(referenceNumber) {
   const value = String(referenceNumber || "").trim();
   return referenceNumberPattern.test(value)
-    || (scheduleType === "Site Survey" && value.toUpperCase() === noReferenceNumberValue);
+    || value.toUpperCase() === noReferenceNumberValue;
 }
 
-function getReferenceNumberValidationMessage(scheduleType) {
-  if (scheduleType === "Site Survey") {
-    return "Enter a valid PS, PR, or PO reference number, or enter NA if none is available.";
-  }
-  return "Enter a valid PS, PR, or PO reference number, for example PS-12345.";
+function getReferenceNumberValidationMessage() {
+  return "Enter a valid PS, PR, or PO reference number, or enter NA if none is available.";
 }
 
 function validateAddScheduleForm() {
@@ -3196,9 +3193,9 @@ function validateAddScheduleForm() {
     }
   });
   const referenceNumber = elements.newPsNo.value.trim();
-  if (referenceNumber && !isValidScheduleReference(referenceNumber, elements.newScheduleType.value)) {
+  if (referenceNumber && !isValidScheduleReference(referenceNumber)) {
     const message = elements.addScheduleForm.querySelector('[data-error-for="psNo"]');
-    message.textContent = getReferenceNumberValidationMessage(elements.newScheduleType.value);
+    message.textContent = getReferenceNumberValidationMessage();
     elements.newPsNo.classList.add("invalid-field");
     firstInvalidField = firstInvalidField || elements.newPsNo;
   }
@@ -3265,8 +3262,8 @@ function validateAddSchedulePayload(record) {
   if (!record.type || !scheduleTypes.includes(record.type)) {
     addError("type", "Select a valid schedule type.");
   }
-  if (!record.psNo || !isValidScheduleReference(record.psNo, record.type)) {
-    addError("psNo", getReferenceNumberValidationMessage(record.type));
+  if (!record.psNo || !isValidScheduleReference(record.psNo)) {
+    addError("psNo", getReferenceNumberValidationMessage());
   }
   [
     ["companyName", "Company Name"],
@@ -3327,7 +3324,7 @@ async function saveNewSchedule(event) {
     date: elements.newScheduleDateTba.checked ? tbaValue : elements.newScheduleDate.value,
     requestedTime: elements.newRequestedTime.value,
     type: elements.newScheduleType.value,
-    psNo: elements.newScheduleType.value === "Site Survey" && referenceNumber.toUpperCase() === noReferenceNumberValue
+    psNo: referenceNumber.toUpperCase() === noReferenceNumberValue
       ? noReferenceNumberValue
       : referenceNumber,
     companyName: elements.newCompanyName.value.trim(),
