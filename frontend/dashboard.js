@@ -3402,7 +3402,7 @@ function normalizeAssignedRole(value) {
 }
 
 function getScheduleAssignmentPayload(roleElement, personElement) {
-  const assignedRole = roleElement.value || "All Team";
+  const assignedRole = roleElement.value;
   const assignedPerson = getSelectedMultiValues(personElement).join(", ") || "Unassigned";
   return { assignedRole, assignedPerson };
 }
