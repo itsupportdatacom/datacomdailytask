@@ -386,6 +386,14 @@
               </select>
             </label>
             <label>
+              From Date
+              <input id="scheduleFromDate" type="date">
+            </label>
+            <label>
+              To Date
+              <input id="scheduleToDate" type="date">
+            </label>
+            <label>
               Status
               <select id="scheduleStatusFilter">
                 <option value="">All Statuses</option>
@@ -438,7 +446,7 @@
           </div>
         </section>
 
-        <div class="table-container">
+        <div class="table-container schedule-table-container">
           <table id="dailyScheduleTable">
             <thead>
               <tr>
@@ -456,6 +464,9 @@
                 <th>Priority</th>
                 <th>Input By</th>
                 <th>Status</th>
+                <th>Remarks</th>
+                <th>Last Updated By</th>
+                <th>Last Updated At</th>
               </tr>
             </thead>
             <tbody id="scheduleRows"></tbody>
@@ -1290,6 +1301,9 @@
           <th>Priority</th>
           <th>Input By</th>
           <th>Status</th>
+          <th>Remarks</th>
+          <th>Last Updated By</th>
+          <th>Last Updated At</th>
         </tr>
       </thead>
       <tbody id="printScheduleRows"></tbody>

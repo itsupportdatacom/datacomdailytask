@@ -1731,8 +1731,12 @@ body.add-schedule-view .date-selector {
 
 .schedule-filter-grid {
   display: grid;
-  grid-template-columns: minmax(245px, 2fr) repeat(5, minmax(124px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: 12px;
+}
+
+.schedule-search {
+  grid-column: span 2;
 }
 
 .schedule-filter-grid label {
@@ -1871,6 +1875,32 @@ body.add-schedule-view .date-selector {
   overflow-x: auto;
 }
 
+.schedule-table-container {
+  max-height: clamp(340px, calc(100vh - 360px), 680px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.schedule-table-container::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
+}
+
+.schedule-table-container::-webkit-scrollbar-track {
+  background: #eef4f9;
+}
+
+.schedule-table-container::-webkit-scrollbar-thumb {
+  border: 3px solid #eef4f9;
+  border-radius: 999px;
+  background: #8aa3ba;
+}
+
+.schedule-table-container::-webkit-scrollbar-thumb:hover {
+  background: #647f99;
+}
+
 .empty-schedule {
   padding: 55px 24px;
   color: var(--muted);
@@ -1901,6 +1931,17 @@ table {
 
 .preview-table {
   min-width: 720px;
+}
+
+#dailyScheduleTable {
+  min-width: 1960px;
+}
+
+.schedule-table-container thead th {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  background: #f5f8fb;
 }
 
 .preview-table td {

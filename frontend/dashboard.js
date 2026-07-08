@@ -368,6 +368,8 @@ const defaultAppData = {
     filters: {
       search: "",
       type: "",
+      fromDate: "",
+      toDate: "",
       status: "",
       assignedRole: "",
       inputBy: "",
@@ -439,6 +441,8 @@ const elements = {
   scheduleLastUpdated: document.getElementById("scheduleLastUpdated"),
   scheduleSearch: document.getElementById("scheduleSearch"),
   scheduleTypeFilter: document.getElementById("scheduleTypeFilter"),
+  scheduleFromDate: document.getElementById("scheduleFromDate"),
+  scheduleToDate: document.getElementById("scheduleToDate"),
   scheduleStatusFilter: document.getElementById("scheduleStatusFilter"),
   assignedRoleFilter: document.getElementById("assignedRoleFilter"),
   inputByFilter: document.getElementById("inputByFilter"),
@@ -704,12 +708,8 @@ async function loadScheduleAndNotificationData() {
 }
 
 async function loadScheduleData() {
-  const confirmedData = await apiRequest("/schedules");
-  const pendingData = await loadPendingQueueData();
-  const combinedSchedules = [
-    ...extractScheduleList(confirmedData),
-    ...extractScheduleList(pendingData)
-  ];
+  const confirmedData = await apiRequest("/schedules?view=all");
+  const combinedSchedules = extractScheduleList(confirmedData);
   const uniqueSchedules = new Map();
   combinedSchedules.forEach((schedule) => {
     const normalized = normalizeScheduleRecord(schedule);
@@ -788,9 +788,11 @@ function isConfirmedScheduleRecord(entry) {
 }
 
 function getRoleVisibleSchedules() {
-  return scheduleRecords.filter((entry) => (
-    canViewAllSchedules() || isCurrentUserSchedule(entry)
-  ));
+  return scheduleRecords;
+}
+
+function canChooseInputBy() {
+  return session?.role !== "Sales";
 }
 
 function getSelectedDateValue() {
@@ -1728,17 +1730,24 @@ function renderScheduleFilterOptions() {
   setFilterOptions(elements.assignedRoleFilter, assignedRoleOptions, "All Roles");
   const inputNames = [...new Set(scheduleRecords.map((entry) => entry.inputBy))].sort();
   setFilterOptions(elements.inputByFilter, inputNames, "All Users");
+  const inputByLabel = elements.inputByFilter.closest("label");
+  const inputByAllowed = canChooseInputBy();
+  elements.inputByFilter.value = inputByAllowed ? elements.inputByFilter.value : "";
+  elements.inputByFilter.disabled = !inputByAllowed;
+  inputByLabel?.classList.toggle("hidden", !inputByAllowed);
 }
 
 function restoreUiState() {
   elements.scheduleSearch.value = uiState.filters?.search || "";
   elements.scheduleTypeFilter.value = uiState.filters?.type || "";
-  elements.scheduleStatusFilter.value = uiState.filters?.status || "";
+  elements.scheduleFromDate.value = uiState.filters?.fromDate || "";
+  elements.scheduleToDate.value = uiState.filters?.toDate || "";
+  elements.scheduleStatusFilter.value = "";
   elements.assignedRoleFilter.value = uiState.filters?.assignedRole || "";
-  elements.inputByFilter.value = uiState.filters?.inputBy || "";
+  elements.inputByFilter.value = "";
   elements.scheduleSort.value = uiState.filters?.sort || "time-asc";
   previewFilter = uiState.previewFilter || "all";
-  scheduleQuickFilter = uiState.scheduleQuickFilter || "";
+  scheduleQuickFilter = "";
   scheduleView = uiState.scheduleView || "table";
   elements.scheduleViewButtons.forEach((button) => {
     const selected = button.dataset.scheduleView === scheduleView;
@@ -2344,9 +2353,7 @@ function renderTimeline(entries) {
     .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
   const fragment = document.createDocumentFragment();
   timelineEntries.forEach((entry) => fragment.appendChild(createTimelineEntry(entry)));
-  elements.timelineDateHeading.textContent = currentSection === "pendingQueue"
-    ? "Pending / TBA Requests"
-    : formatDate(getSelectedDateValue());
+  elements.timelineDateHeading.textContent = getScheduleDateScopeLabel();
   elements.timelineRows.replaceChildren(fragment);
   elements.emptyTimeline.classList.toggle("hidden", timelineEntries.length !== 0);
 }
@@ -2426,6 +2433,9 @@ function createScheduleRow(entry) {
   const statusCell = document.createElement("td");
   statusCell.appendChild(createBadge(entry.status, statusClass(entry.status), "status-badge"));
   row.appendChild(statusCell);
+  row.appendChild(createCell(entry.remarks || "-"));
+  row.appendChild(createCell(entry.lastUpdatedBy || "-"));
+  row.appendChild(createCell(entry.lastUpdatedAt || "-"));
 
   return row;
 }
@@ -2458,10 +2468,10 @@ function openScheduleDetails(scheduleId) {
   elements.detailAssignedPerson.textContent = entry.assignedPerson || "-";
   elements.detailPriority.textContent = entry.priority || "Normal";
   elements.detailInputBy.textContent = entry.inputBy;
-  elements.detailRemarks.textContent = entry.remarks;
-  elements.detailCreated.textContent = entry.createdAt;
-  elements.detailUpdatedBy.textContent = entry.lastUpdatedBy;
-  elements.detailUpdatedAt.textContent = entry.lastUpdatedAt;
+  elements.detailRemarks.textContent = entry.remarks || "-";
+  elements.detailCreated.textContent = entry.createdAt || "-";
+  elements.detailUpdatedBy.textContent = entry.lastUpdatedBy || "-";
+  elements.detailUpdatedAt.textContent = entry.lastUpdatedAt || "-";
   const canEdit = canEditSchedule(entry);
   const canUpdateStatus = canUpdateScheduleStatus(entry);
   elements.editScheduleDetail.classList.toggle("hidden", !canEdit);
@@ -2747,9 +2757,16 @@ async function saveScheduleStatus(event) {
       method: "PATCH",
       body: JSON.stringify({ status: elements.newScheduleStatus.value, remarks })
     });
-    replaceSchedule(result.schedule);
-    refreshScheduleViews(result.schedule);
-    showToast(`${result.schedule.psNo} status updated to ${result.schedule.status}.`);
+    if (result.schedule) {
+      replaceSchedule(result.schedule);
+      refreshScheduleViews(result.schedule);
+      showToast(`${result.schedule.psNo} status updated to ${result.schedule.status}.`);
+    } else {
+      await loadScheduleData();
+      closeDetailWorkflows();
+      renderSelectedDate();
+      showToast(`${entry.psNo} status updated.`);
+    }
     await refreshNotifications();
   } catch (error) {
     showToast(error.message);
@@ -2884,7 +2901,10 @@ function getScheduleExportCells(entry) {
     entry.assignedPerson || "-",
     entry.priority || "Normal",
     entry.inputBy,
-    entry.status
+    entry.status,
+    entry.remarks || "-",
+    entry.lastUpdatedBy || "-",
+    entry.lastUpdatedAt || "-"
   ];
 }
 
@@ -2893,17 +2913,13 @@ function printSelectedDateSchedule() {
     showToast("Export Reports permission is required.");
     return;
   }
-  const entries = getScheduleListSource()
-    .slice()
-    .sort((first, second) => scheduleTimeSortValue(first.requestedTime).localeCompare(scheduleTimeSortValue(second.requestedTime)));
+  const entries = getFilteredSchedule();
   const rows = entries.map((entry) => {
     const row = document.createElement("tr");
     getScheduleExportCells(entry).forEach((value) => row.appendChild(createCell(value)));
     return row;
   });
-  elements.printScheduleDate.textContent = currentSection === "pendingQueue"
-    ? "Pending / TBA Requests"
-    : formatDate(getSelectedDateValue());
+  elements.printScheduleDate.textContent = getScheduleDateScopeLabel();
   elements.printScheduleRows.replaceChildren(...rows);
   document.body.classList.add("printing-daily-schedule");
   window.print();
@@ -2932,7 +2948,10 @@ function exportFilteredScheduleCsv() {
     "Assigned Person",
     "Priority",
     "Input By",
-    "Status"
+    "Status",
+    "Remarks",
+    "Last Updated By",
+    "Last Updated At"
   ];
   const rows = getFilteredSchedule().map(getScheduleExportCells);
   const csv = [headers, ...rows]
@@ -3008,6 +3027,20 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function getScheduleDateScopeLabel() {
+  const fromDate = elements.scheduleFromDate.value;
+  const toDate = elements.scheduleToDate.value;
+  if (currentSection === "pendingQueue") {
+    return "Pending / TBA Requests";
+  }
+  if (fromDate || toDate) {
+    const fromLabel = fromDate ? formatDate(fromDate) : "Any date";
+    const toLabel = toDate ? formatDate(toDate) : "Any date";
+    return `${fromLabel} to ${toLabel}`;
+  }
+  return formatDate(getSelectedDateValue());
+}
+
 function parseDate(value) {
   if (value === tbaValue) {
     return new Date();
@@ -3040,12 +3073,24 @@ function getPendingQueueSchedule() {
   return getRoleVisibleSchedules().filter(isPendingQueueRecord);
 }
 
+function hasScheduleDateRangeFilter() {
+  return Boolean(elements.scheduleFromDate.value || elements.scheduleToDate.value);
+}
+
 function getScheduleListSource() {
-  return currentSection === "pendingQueue" ? getPendingQueueSchedule() : getSelectedSchedule();
+  if (currentSection === "pendingQueue") {
+    return getPendingQueueSchedule();
+  }
+  if (hasScheduleDateRangeFilter()) {
+    return getRoleVisibleSchedules();
+  }
+  return getSelectedSchedule();
 }
 
 function getFilteredSchedule() {
   const query = elements.scheduleSearch.value.trim().toLowerCase();
+  const fromDate = elements.scheduleFromDate.value;
+  const toDate = elements.scheduleToDate.value;
   const entries = getScheduleListSource().filter((entry) => {
     const searchableValues = [
       entry.psNo,
@@ -3059,11 +3104,13 @@ function getFilteredSchedule() {
       entry.inputBy
     ].join(" ").toLowerCase();
     const matchesSearch = !query || searchableValues.includes(query);
+    const matchesFromDate = !fromDate || entry.date === tbaValue || entry.date >= fromDate;
+    const matchesToDate = !toDate || entry.date === tbaValue || entry.date <= toDate;
     const matchesType = !elements.scheduleTypeFilter.value || entry.type === elements.scheduleTypeFilter.value;
     const matchesStatus = !elements.scheduleStatusFilter.value || entry.status === elements.scheduleStatusFilter.value;
     const matchesRole = !elements.assignedRoleFilter.value || entry.assignedRole === elements.assignedRoleFilter.value;
-    const matchesInputBy = !elements.inputByFilter.value || entry.inputBy === elements.inputByFilter.value;
-    return matchesSearch && matchesType && matchesStatus && matchesRole && matchesInputBy;
+    const matchesInputBy = !canChooseInputBy() || !elements.inputByFilter.value || entry.inputBy === elements.inputByFilter.value;
+    return matchesSearch && matchesFromDate && matchesToDate && matchesType && matchesStatus && matchesRole && matchesInputBy;
   });
   return entries.sort(compareSchedules);
 }
@@ -3122,6 +3169,8 @@ function applyScheduleQuickFilter(filter) {
 function clearScheduleFilters() {
   elements.scheduleSearch.value = "";
   elements.scheduleTypeFilter.value = "";
+  elements.scheduleFromDate.value = "";
+  elements.scheduleToDate.value = "";
   elements.scheduleStatusFilter.value = "";
   elements.assignedRoleFilter.value = "";
   elements.inputByFilter.value = "";
@@ -3418,6 +3467,10 @@ function normalizeScheduleRecord(record) {
     pic: record.pic || record.picName || record.pic_name || "-",
     contactNumber: record.contactNumber || record.contact_number || "-",
     priority: record.priority || "Normal",
+    status: record.status || "Submitted",
+    remarks: record.remarks || "-",
+    lastUpdatedBy: record.lastUpdatedBy || record.last_updated_by || record.updatedBy || record.updated_by || "-",
+    lastUpdatedAt: record.lastUpdatedAt || record.last_updated_at || record.updatedAt || record.updated_at || "-",
     fieldSyncStatus: record.fieldSyncStatus || "Not Sent"
   };
 }
@@ -3522,7 +3575,14 @@ function bindActions() {
     renderSchedule();
     persistAppData();
   });
-  [elements.scheduleTypeFilter, elements.assignedRoleFilter, elements.inputByFilter, elements.scheduleSort]
+  [
+    elements.scheduleTypeFilter,
+    elements.scheduleFromDate,
+    elements.scheduleToDate,
+    elements.assignedRoleFilter,
+    elements.inputByFilter,
+    elements.scheduleSort
+  ]
     .forEach((control) => control.addEventListener("change", () => {
       renderSchedule();
       persistAppData();
@@ -4242,9 +4302,11 @@ function captureUiState() {
     filters: {
       search: elements.scheduleSearch.value,
       type: elements.scheduleTypeFilter.value,
+      fromDate: elements.scheduleFromDate.value,
+      toDate: elements.scheduleToDate.value,
       status: elements.scheduleStatusFilter.value,
       assignedRole: elements.assignedRoleFilter.value,
-      inputBy: elements.inputByFilter.value,
+      inputBy: canChooseInputBy() ? elements.inputByFilter.value : "",
       sort: elements.scheduleSort.value
     }
   };
