@@ -1736,6 +1736,7 @@ body.add-schedule-view .date-selector {
 }
 
 .schedule-search {
+  position: relative;
   grid-column: span 2;
 }
 
@@ -1765,6 +1766,60 @@ body.add-schedule-view .date-selector {
   outline: none;
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(8, 120, 209, 0.12);
+}
+
+.search-suggestions {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid #d6e2ed;
+  border-radius: 8px;
+  background: var(--white);
+  box-shadow: 0 16px 34px rgba(8, 35, 61, 0.14);
+}
+
+.search-suggestion {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  border: 0;
+  border-bottom: 1px solid #edf2f7;
+  padding: 9px 12px;
+  color: var(--ink);
+  background: var(--white);
+  text-align: left;
+}
+
+.search-suggestion:last-child {
+  border-bottom: 0;
+}
+
+.search-suggestion:hover,
+.search-suggestion.active {
+  background: #eef7ff;
+}
+
+.search-suggestion strong,
+.search-suggestion span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-suggestion strong {
+  color: var(--navy);
+  font-size: 13px;
+}
+
+.search-suggestion span {
+  margin-top: 2px;
+  color: #6b8196;
+  font-size: 11px;
 }
 
 .quick-filter-row {

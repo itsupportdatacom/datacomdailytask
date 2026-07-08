@@ -440,6 +440,7 @@ const elements = {
   scheduleHeading: document.getElementById("scheduleHeading"),
   scheduleLastUpdated: document.getElementById("scheduleLastUpdated"),
   scheduleSearch: document.getElementById("scheduleSearch"),
+  scheduleSearchSuggestions: document.getElementById("scheduleSearchSuggestions"),
   scheduleTypeFilter: document.getElementById("scheduleTypeFilter"),
   scheduleFromDate: document.getElementById("scheduleFromDate"),
   scheduleToDate: document.getElementById("scheduleToDate"),
@@ -1246,6 +1247,8 @@ function renderDateHeading() {
   const isScheduleView = currentSection === "dailySchedule";
   const isPendingQueue = currentSection === "pendingQueue";
   const isAddSchedule = currentSection === "addSchedule";
+  const rangeLabel = hasScheduleDateRangeFilter() ? getScheduleDateScopeLabel() : "";
+  const scheduleViewLabel = isScheduleView && rangeLabel ? rangeLabel : label;
   elements.dateSelector.classList.toggle("hidden", isAddSchedule || isPendingQueue);
   if (isAddSchedule) {
     elements.dashboardTitle.textContent = "Add Schedule";
@@ -1260,12 +1263,12 @@ function renderDateHeading() {
     return;
   }
   elements.dashboardTitle.textContent = isScheduleView
-    ? `${canViewAll ? "Daily Schedule" : "My Schedule"} - ${label}`
+    ? `${canViewAll ? "Daily Schedule" : "My Schedule"} - ${scheduleViewLabel}`
     : `${canViewAll ? "Daily Operations Overview" : "My Schedule Overview"} - ${label}`;
   elements.dashboardSubtitle.textContent = !canViewAll
-    ? `Showing schedules submitted by ${session.username} for ${label}.`
+    ? `Showing schedules submitted by ${session.username} for ${scheduleViewLabel}.`
     : isScheduleView
-      ? `Review scheduled activities for ${label}.`
+      ? `Review scheduled activities for ${scheduleViewLabel}.`
       : `Monitor scheduled work and manage activities for ${label}.`;
 }
 
@@ -2328,6 +2331,9 @@ function createPreviewRow(entry) {
 }
 
 function renderSchedule() {
+  if (!document.activeElement?.isSameNode(elements.scheduleSearch)) {
+    hideScheduleSearchSuggestions();
+  }
   const fragment = document.createDocumentFragment();
   const selectedEntries = getFilteredSchedule();
   const queueView = currentSection === "pendingQueue";
@@ -3077,6 +3083,11 @@ function hasScheduleDateRangeFilter() {
   return Boolean(elements.scheduleFromDate.value || elements.scheduleToDate.value);
 }
 
+function clearScheduleDateRangeFilters() {
+  elements.scheduleFromDate.value = "";
+  elements.scheduleToDate.value = "";
+}
+
 function getScheduleListSource() {
   if (currentSection === "pendingQueue") {
     return getPendingQueueSchedule();
@@ -3087,22 +3098,106 @@ function getScheduleListSource() {
   return getSelectedSchedule();
 }
 
+function normalizeScheduleSearchText(value) {
+  return String(value || "").toLowerCase().replace(/\s+/g, "");
+}
+
+function getScheduleSearchValues(entry) {
+  return [
+    { label: "Reference", value: entry.psNo },
+    { label: "Company", value: entry.companyName },
+    { label: "Products", value: entry.products },
+    { label: "Location", value: entry.location },
+    { label: "PIC", value: entry.pic },
+    { label: "Contact", value: entry.contactNumber },
+    { label: "Assigned", value: entry.assignedPerson },
+    { label: "Priority", value: entry.priority },
+    { label: "Input By", value: entry.inputBy }
+  ].filter((item) => String(item.value || "").trim() && !["-", "Nil"].includes(String(item.value).trim()));
+}
+
+function getScheduleSearchSuggestions(query) {
+  const normalizedQuery = normalizeScheduleSearchText(query);
+  if (!normalizedQuery) {
+    return [];
+  }
+  const suggestions = new Map();
+  getScheduleListSource().forEach((entry) => {
+    getScheduleSearchValues(entry).forEach((item) => {
+      const normalizedValue = normalizeScheduleSearchText(item.value);
+      if (!normalizedValue.includes(normalizedQuery) || suggestions.has(normalizedValue)) {
+        return;
+      }
+      suggestions.set(normalizedValue, {
+        ...item,
+        startsWithQuery: normalizedValue.startsWith(normalizedQuery),
+        reference: entry.psNo
+      });
+    });
+  });
+  return [...suggestions.values()]
+    .sort((first, second) => Number(second.startsWithQuery) - Number(first.startsWithQuery)
+      || String(first.value).localeCompare(String(second.value)))
+    .slice(0, 8);
+}
+
+function renderScheduleSearchSuggestions() {
+  const suggestions = getScheduleSearchSuggestions(elements.scheduleSearch.value);
+  if (!suggestions.length) {
+    hideScheduleSearchSuggestions();
+    return;
+  }
+  const buttons = suggestions.map((suggestion, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "search-suggestion";
+    button.dataset.searchSuggestion = suggestion.value;
+    button.dataset.suggestionIndex = String(index);
+    button.setAttribute("role", "option");
+    const value = document.createElement("strong");
+    value.textContent = suggestion.value;
+    const meta = document.createElement("span");
+    meta.textContent = `${suggestion.label} - ${suggestion.reference}`;
+    button.append(value, meta);
+    return button;
+  });
+  elements.scheduleSearchSuggestions.replaceChildren(...buttons);
+  elements.scheduleSearchSuggestions.classList.remove("hidden");
+}
+
+function hideScheduleSearchSuggestions() {
+  elements.scheduleSearchSuggestions.replaceChildren();
+  elements.scheduleSearchSuggestions.classList.add("hidden");
+}
+
+function selectScheduleSearchSuggestion(value) {
+  elements.scheduleSearch.value = value;
+  hideScheduleSearchSuggestions();
+  renderSchedule();
+  persistAppData();
+}
+
+function moveScheduleSearchSuggestion(direction) {
+  const suggestions = [...elements.scheduleSearchSuggestions.querySelectorAll(".search-suggestion")];
+  if (!suggestions.length) {
+    return;
+  }
+  const currentIndex = suggestions.findIndex((button) => button.classList.contains("active"));
+  const nextIndex = currentIndex === -1
+    ? direction > 0 ? 0 : suggestions.length - 1
+    : (currentIndex + direction + suggestions.length) % suggestions.length;
+  suggestions.forEach((button, index) => button.classList.toggle("active", index === nextIndex));
+  suggestions[nextIndex].scrollIntoView({ block: "nearest" });
+}
+
 function getFilteredSchedule() {
-  const query = elements.scheduleSearch.value.trim().toLowerCase();
+  const query = normalizeScheduleSearchText(elements.scheduleSearch.value);
   const fromDate = elements.scheduleFromDate.value;
   const toDate = elements.scheduleToDate.value;
   const entries = getScheduleListSource().filter((entry) => {
-    const searchableValues = [
-      entry.psNo,
-      entry.companyName,
-      entry.products,
-      entry.location,
-      entry.pic || "",
-      entry.contactNumber || "",
-      entry.assignedPerson || "",
-      entry.priority || "",
-      entry.inputBy
-    ].join(" ").toLowerCase();
+    const searchableValues = normalizeScheduleSearchText(
+      getScheduleSearchValues(entry).map((item) => item.value).join(" ")
+    );
     const matchesSearch = !query || searchableValues.includes(query);
     const matchesFromDate = !fromDate || entry.date === tbaValue || entry.date >= fromDate;
     const matchesToDate = !toDate || entry.date === tbaValue || entry.date <= toDate;
@@ -3142,6 +3237,7 @@ function updateScheduleQuickButtons() {
 function applyScheduleQuickFilter(filter) {
   scheduleQuickFilter = filter;
   if (filter === tbaValue) {
+    clearScheduleDateRangeFilters();
     showSection("pendingQueue", "Pending Queue");
     elements.scheduleStatusFilter.value = "";
     renderSchedule();
@@ -3155,6 +3251,7 @@ function applyScheduleQuickFilter(filter) {
     if (filter === "tomorrow") {
       selectedDate.setDate(selectedDate.getDate() + 1);
     }
+    clearScheduleDateRangeFilters();
     setDashboardDate(localDateString(selectedDate));
     renderSelectedDate();
   } else {
@@ -3168,15 +3265,16 @@ function applyScheduleQuickFilter(filter) {
 
 function clearScheduleFilters() {
   elements.scheduleSearch.value = "";
+  hideScheduleSearchSuggestions();
   elements.scheduleTypeFilter.value = "";
-  elements.scheduleFromDate.value = "";
-  elements.scheduleToDate.value = "";
+  clearScheduleDateRangeFilters();
   elements.scheduleStatusFilter.value = "";
   elements.assignedRoleFilter.value = "";
   elements.inputByFilter.value = "";
   elements.scheduleSort.value = "time-asc";
   scheduleQuickFilter = "";
   updateScheduleQuickButtons();
+  renderDateHeading();
   renderSchedule();
   persistAppData();
 }
@@ -3522,6 +3620,7 @@ function bindActions() {
     }
   });
   elements.scheduleDate.addEventListener("change", () => {
+    clearScheduleDateRangeFilters();
     if (!elements.scheduleDate.value) {
       setDashboardDate(localDateString(new Date()));
     } else {
@@ -3535,6 +3634,7 @@ function bindActions() {
   elements.previousDay.addEventListener("click", () => changeSelectedDay(-1));
   elements.nextDay.addEventListener("click", () => changeSelectedDay(1));
   elements.selectTbaDate.addEventListener("click", () => {
+    clearScheduleDateRangeFilters();
     scheduleQuickFilter = tbaValue;
     showSection("pendingQueue", "Pending Queue");
     updateScheduleQuickButtons();
@@ -3573,17 +3673,53 @@ function bindActions() {
   elements.clearPreviewFilter.addEventListener("click", () => applyPreviewFilter("all"));
   elements.scheduleSearch.addEventListener("input", () => {
     renderSchedule();
+    renderScheduleSearchSuggestions();
     persistAppData();
+  });
+  elements.scheduleSearch.addEventListener("focus", renderScheduleSearchSuggestions);
+  elements.scheduleSearch.addEventListener("blur", () => {
+    setTimeout(hideScheduleSearchSuggestions, 120);
+  });
+  elements.scheduleSearch.addEventListener("keydown", (event) => {
+    if (elements.scheduleSearchSuggestions.classList.contains("hidden")) {
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveScheduleSearchSuggestion(1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveScheduleSearchSuggestion(-1);
+    } else if (event.key === "Enter") {
+      const activeSuggestion = elements.scheduleSearchSuggestions.querySelector(".search-suggestion.active");
+      if (activeSuggestion) {
+        event.preventDefault();
+        selectScheduleSearchSuggestion(activeSuggestion.dataset.searchSuggestion);
+      }
+    } else if (event.key === "Escape") {
+      hideScheduleSearchSuggestions();
+    }
+  });
+  elements.scheduleSearchSuggestions.addEventListener("mousedown", (event) => {
+    event.preventDefault();
+    const suggestion = event.target.closest("[data-search-suggestion]");
+    if (suggestion) {
+      selectScheduleSearchSuggestion(suggestion.dataset.searchSuggestion);
+    }
   });
   [
     elements.scheduleTypeFilter,
-    elements.scheduleFromDate,
-    elements.scheduleToDate,
     elements.assignedRoleFilter,
     elements.inputByFilter,
     elements.scheduleSort
   ]
     .forEach((control) => control.addEventListener("change", () => {
+      renderSchedule();
+      persistAppData();
+    }));
+  [elements.scheduleFromDate, elements.scheduleToDate]
+    .forEach((control) => control.addEventListener("change", () => {
+      renderDateHeading();
       renderSchedule();
       persistAppData();
     }));
@@ -4187,6 +4323,7 @@ async function saveEditedUser(event) {
 function changeSelectedDay(offset) {
   const date = getSelectedDateValue() === tbaValue ? new Date() : parseDate(elements.scheduleDate.value);
   date.setDate(date.getDate() + offset);
+  clearScheduleDateRangeFilters();
   setDashboardDate(localDateString(date));
   scheduleQuickFilter = "";
   updateScheduleQuickButtons();
